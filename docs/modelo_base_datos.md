@@ -78,7 +78,7 @@ Guarda eventos de cambio de actuadores:
 
 ### comandos_actuadores
 
-Guarda comandos preparados para control futuro desde app o web. En esta fase no se implementan endpoints completos para ejecutar comandos.
+Guarda comandos preparados para control futuro desde app o web. En Fase 2 ya existe el endpoint para crear, consultar y actualizar el estado de comandos, pero la ejecucion fisica sigue dependiendo de una integracion futura con ESP32.
 
 Esta tabla solo permite comandos para:
 
@@ -106,4 +106,15 @@ Guarda parametros de calibracion de sensores:
 3. MySQL guardara la informacion en las tablas correspondientes.
 4. La API devolvera respuestas JSON al cliente.
 
-En esta fase solo se implementa la verificacion base mediante `/api/status.php`.
+## Endpoints Fase 2
+
+La Fase 2 agrega endpoints JSON para operar sobre las tablas ya existentes, sin agregar tablas nuevas:
+
+- `/api/lecturas.php`: guarda y consulta lecturas.
+- `/api/actuadores.php`: guarda y consulta el ultimo estado de actuadores.
+- `/api/accesos.php`: registra y consulta accesos RFID.
+- `/api/configuracion.php`: consulta y actualiza configuracion de automatizacion.
+- `/api/comandos.php`: crea, consulta y actualiza comandos remotos permitidos.
+- `/api/eventos.php`: registra y consulta eventos de actuadores.
+
+Todos los endpoints pasan por la API PHP; MySQL no recibe datos directamente desde ESP32, app o web.
