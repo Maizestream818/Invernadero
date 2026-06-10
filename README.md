@@ -2,7 +2,7 @@
 
 ## Estado actual
 
-Fase 2: Endpoints funcionales del backend.
+Fase 3: Panel web de monitoreo.
 
 ## Tecnologias
 
@@ -11,6 +11,9 @@ Fase 2: Endpoints funcionales del backend.
 - Apache
 - MySQL
 - phpMyAdmin
+- HTML5
+- CSS3
+- JavaScript puro
 - PowerShell para pruebas
 
 ## Requisitos
@@ -40,6 +43,12 @@ phpMyAdmin:
 http://localhost:8081
 ```
 
+Panel web:
+
+```text
+http://localhost:8080/web/
+```
+
 ## Base de datos
 
 Nombre:
@@ -64,6 +73,7 @@ Tablas:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase1.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase2.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase3.ps1
 ```
 
 ## Fase 2: Endpoints funcionales del backend
@@ -131,6 +141,31 @@ Consultar comandos pendientes:
 curl http://localhost:8080/api/comandos.php?estado=pendiente
 ```
 
+## Fase 3: Panel web de monitoreo
+
+URL:
+
+```text
+http://localhost:8080/web/
+```
+
+Panel web HTML/CSS/JS para monitorear el estado del invernadero en tiempo real usando la API REST PHP.
+
+El panel muestra:
+
+- Estado de la API.
+- Ultima lectura de sensores.
+- Ultimo estado de actuadores.
+- Configuracion de automatizacion.
+- Ultimas lecturas.
+- Ultimos accesos RFID.
+- Ultimos eventos de actuadores.
+- Comandos recientes.
+
+Aclaracion:
+
+El panel web no controla actuadores. Solo monitorea. El control remoto se reserva para la app Android futura.
+
 ## Nota de alcance
 
-En esta fase no se implementa panel web, app Android, codigo ESP32, ngrok, login, roles, frameworks, MQTT, WebSockets, graficas ni notificaciones. Solo se implementa backend PHP puro con endpoints JSON funcionales.
+En esta fase no se implementa app Android, codigo ESP32, ngrok, login, roles, frameworks, MQTT, WebSockets, graficas avanzadas, notificaciones ni control manual desde la web.

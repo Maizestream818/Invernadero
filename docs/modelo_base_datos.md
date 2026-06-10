@@ -118,3 +118,9 @@ La Fase 2 agrega endpoints JSON para operar sobre las tablas ya existentes, sin 
 - `/api/eventos.php`: registra y consulta eventos de actuadores.
 
 Todos los endpoints pasan por la API PHP; MySQL no recibe datos directamente desde ESP32, app o web.
+
+## Panel web Fase 3
+
+La Fase 3 agrega un panel web estatico en `/web/` para monitoreo desde computadora. El panel consume la API REST PHP usando `fetch` y no se conecta directamente a MySQL.
+
+El panel muestra lecturas, estados de actuadores, configuracion, accesos RFID, eventos y comandos recientes. No modifica datos, no crea comandos y no controla actuadores. El control remoto queda reservado para una app Android futura, mientras que el servo de acceso sigue asociado principalmente al flujo RFID.
