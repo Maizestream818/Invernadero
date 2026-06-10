@@ -1,8 +1,10 @@
 # Invernadero Inteligente IoT
 
-## Estado actual
+## Descripcion
 
-Fase 3: Panel web de monitoreo.
+Proyecto academico para un invernadero inteligente IoT. La version actual incluye base de datos MySQL, API REST en PHP puro, phpMyAdmin, panel web de monitoreo y documentacion para acceso externo con ngrok.
+
+El panel web consume datos reales desde la API y permite monitorear lecturas, actuadores, configuracion, accesos RFID, eventos y comandos recientes. El panel no controla actuadores.
 
 ## Tecnologias
 
@@ -11,9 +13,10 @@ Fase 3: Panel web de monitoreo.
 - Apache
 - MySQL
 - phpMyAdmin
-- HTML5
-- CSS3
-- JavaScript puro
+- HTML
+- CSS
+- JavaScript
+- ngrok
 - PowerShell para pruebas
 
 ## Requisitos
@@ -21,33 +24,29 @@ Fase 3: Panel web de monitoreo.
 - Docker Desktop
 - Git
 - PowerShell
+- ngrok para acceso externo
 
-## Configuracion inicial
+## Instalacion desde cero
 
 ```powershell
+git clone https://github.com/Maizestream818/Invernadero.git
+cd Invernadero
 copy .env.example .env
 docker compose up -d --build
 ```
 
-## URLs
+## URLs locales
 
-API status:
+- Panel web: http://localhost:8080/web/
+- API status: http://localhost:8080/api/status.php
+- phpMyAdmin: http://localhost:8081
 
-```text
-http://localhost:8080/api/status.php
-```
+## Credenciales de phpMyAdmin
 
-phpMyAdmin:
-
-```text
-http://localhost:8081
-```
-
-Panel web:
-
-```text
-http://localhost:8080/web/
-```
+- Servidor: `db`
+- Usuario: `invernadero_user`
+- Contrasena: `invernadero_pass`
+- Base de datos: `invernadero_iot`
 
 ## Base de datos
 
@@ -59,26 +58,16 @@ invernadero_iot
 
 Tablas:
 
-- lecturas
-- configuracion_automatizacion
-- estados_actuadores
-- tarjetas_rfid
-- accesos_rfid
-- eventos_actuadores
-- comandos_actuadores
-- calibraciones_sensores
+- `lecturas`
+- `configuracion_automatizacion`
+- `estados_actuadores`
+- `tarjetas_rfid`
+- `accesos_rfid`
+- `eventos_actuadores`
+- `comandos_actuadores`
+- `calibraciones_sensores`
 
-## Pruebas
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tests\probar_fase1.ps1
-powershell -ExecutionPolicy Bypass -File .\tests\probar_fase2.ps1
-powershell -ExecutionPolicy Bypass -File .\tests\probar_fase3.ps1
-```
-
-## Fase 2: Endpoints funcionales del backend
-
-Endpoints disponibles:
+## Endpoints principales
 
 - `GET /api/status.php`
 - `GET /api/lecturas.php`
@@ -95,53 +84,7 @@ Endpoints disponibles:
 - `GET /api/eventos.php`
 - `POST /api/eventos.php`
 
-### Ejemplos curl
-
-Crear lectura:
-
-```bash
-curl -X POST http://localhost:8080/api/lecturas.php \
-  -H "Content-Type: application/json" \
-  -d "{\"temperatura_c\":28.5,\"humedad_ambiente_pct\":62,\"humedad_suelo_pct\":41.3,\"humedad_suelo_raw\":2870,\"intensidad_luz_lux\":780.5}"
-```
-
-Consultar lecturas:
-
-```bash
-curl http://localhost:8080/api/lecturas.php?limite=10
-```
-
-Crear estado de actuadores:
-
-```bash
-curl -X POST http://localhost:8080/api/actuadores.php \
-  -H "Content-Type: application/json" \
-  -d "{\"ventilador\":1,\"bomba\":0,\"lampara\":1,\"servo_acceso\":0,\"modo_control\":\"automatico\",\"origen\":\"esp32\"}"
-```
-
-Registrar acceso RFID:
-
-```bash
-curl -X POST http://localhost:8080/api/accesos.php \
-  -H "Content-Type: application/json" \
-  -d "{\"uid\":\"A1B2C3D4\",\"servo_abierto\":1}"
-```
-
-Crear comando para bomba:
-
-```bash
-curl -X POST http://localhost:8080/api/comandos.php \
-  -H "Content-Type: application/json" \
-  -d "{\"actuador\":\"bomba\",\"estado_solicitado\":1,\"origen\":\"app\"}"
-```
-
-Consultar comandos pendientes:
-
-```bash
-curl http://localhost:8080/api/comandos.php?estado=pendiente
-```
-
-## Fase 3: Panel web de monitoreo
+## Panel web
 
 URL:
 
@@ -149,9 +92,9 @@ URL:
 http://localhost:8080/web/
 ```
 
-Panel web HTML/CSS/JS para monitorear el estado del invernadero en tiempo real usando la API REST PHP.
+El panel web HTML/CSS/JS monitorea el estado del invernadero usando la API REST PHP.
 
-El panel muestra:
+Muestra:
 
 - Estado de la API.
 - Ultima lectura de sensores.
@@ -162,10 +105,49 @@ El panel muestra:
 - Ultimos eventos de actuadores.
 - Comandos recientes.
 
-Aclaracion:
+El panel web no controla actuadores. Solo monitorea. El control remoto se reserva para la App Android en etapa posterior.
 
-El panel web no controla actuadores. Solo monitorea. El control remoto se reserva para la app Android futura.
+## Uso con ngrok
+
+Con Docker levantado, ejecutar:
+
+```powershell
+ngrok http 8080
+```
+
+Si ngrok genera esta URL:
+
+```text
+https://ejemplo.ngrok-free.app
+```
+
+Entonces las rutas publicas seran:
+
+- Panel web: https://ejemplo.ngrok-free.app/web/
+- API status: https://ejemplo.ngrok-free.app/api/status.php
+- Lecturas: https://ejemplo.ngrok-free.app/api/lecturas.php
+- Actuadores: https://ejemplo.ngrok-free.app/api/actuadores.php
+- Accesos RFID: https://ejemplo.ngrok-free.app/api/accesos.php
+
+La URL gratuita de ngrok puede cambiar cada vez que se reinicia ngrok.
+
+## Pruebas
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase1.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase2.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase3.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase4.ps1
+```
+
+## Guias
+
+- [Guia de ejecucion](docs/guia_ejecucion.md)
+- [Guia de ngrok](docs/guia_ngrok.md)
+- [Guia de entrega](docs/guia_entrega.md)
 
 ## Nota de alcance
 
-En esta fase no se implementa app Android, codigo ESP32, ngrok, login, roles, frameworks, MQTT, WebSockets, graficas avanzadas, notificaciones ni control manual desde la web.
+El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin y panel web de monitoreo. La aplicacion Android y el codigo ESP32 se implementaran despues.
+
+No se implementan login, roles, frameworks, MQTT, WebSockets, control manual desde web ni nuevas tablas en esta etapa.
