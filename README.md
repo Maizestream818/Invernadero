@@ -18,6 +18,8 @@ El panel web consume datos reales desde la API y permite monitorear lecturas, ac
 - JavaScript
 - ngrok
 - PowerShell para pruebas
+- Java
+- XML Views
 
 ## Requisitos
 
@@ -138,6 +140,7 @@ powershell -ExecutionPolicy Bypass -File .\tests\probar_fase1.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase2.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase3.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase4.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase5_app.ps1
 ```
 
 ## Guias
@@ -146,8 +149,57 @@ powershell -ExecutionPolicy Bypass -File .\tests\probar_fase4.ps1
 - [Guia de ngrok](docs/guia_ngrok.md)
 - [Guia de entrega](docs/guia_entrega.md)
 
+## Fase 5: App Android de monitoreo
+
+- Ubicacion: `android-app/`
+- Tecnologia: Java + XML Views.
+- URL para emulador: `http://10.0.2.2:8080/api`
+- URL local desde navegador: `http://localhost:8080/api`
+- URL con ngrok: `https://TU-URL.ngrok-free.app/api`
+
+La app consume la API REST PHP. La app no se conecta directamente a MySQL y no se conecta directamente al ESP32.
+
+En esta fase la app solo monitorea:
+
+- Estado de API mediante `/status.php`.
+- Ultima lectura de sensores mediante `/lecturas.php?limite=1`.
+- Ultimo estado de actuadores mediante `/actuadores.php`.
+- Configuracion mediante `/configuracion.php`.
+- Accesos RFID recientes mediante `/accesos.php?limite=5`.
+- Comandos recientes mediante `/comandos.php?limite=5`.
+
+La app no crea comandos todavia y no controla actuadores. El control remoto se implementara despues.
+
+Pruebas manuales esperadas:
+
+1. Levantar backend:
+
+```powershell
+docker compose up -d --build
+```
+
+2. Probar API:
+
+```text
+http://localhost:8080/api/status.php
+```
+
+3. Ejecutar la app en emulador Android.
+
+4. En la app usar:
+
+```text
+http://10.0.2.2:8080/api
+```
+
+5. Presionar `Probar conexion`; debe mostrar `API conectada`.
+
+6. Presionar `Actualizar datos`; debe mostrar sensores, actuadores, configuracion, accesos RFID y comandos recientes.
+
+7. Cambiar la URL a una incorrecta; debe mostrar error sin cerrar la app.
+
 ## Nota de alcance
 
-El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin y panel web de monitoreo. La aplicacion Android y el codigo ESP32 se implementaran despues.
+El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin, panel web de monitoreo y app Android base de monitoreo. La frase App Android en etapa posterior aplica al control remoto pendiente. El codigo ESP32 se implementara despues.
 
 No se implementan login, roles, frameworks, MQTT, WebSockets, control manual desde web ni nuevas tablas en esta etapa.

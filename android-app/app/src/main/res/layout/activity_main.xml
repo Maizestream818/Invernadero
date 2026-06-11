@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#EEF4EF"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvTitulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Invernadero Inteligente IoT"
+            android:textColor="#173D28"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="App Android de monitoreo"
+            android:textColor="#52665A"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="URL base de API"
+            android:textColor="#1D2B22"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etApiBaseUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:hint="http://10.0.2.2:8080/api"
+            android:inputType="textUri"
+            android:singleLine="true" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btnGuardarUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Guardar URL" />
+
+            <Button
+                android:id="@+id/btnProbarConexion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Probar conexion" />
+
+            <Button
+                android:id="@+id/btnActualizarDatos"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Actualizar datos" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvEstadoApi"
+            style="@style/TextBlock"
+            android:layout_marginTop="14dp"
+            android:text="API no verificada" />
+
+        <TextView
+            android:id="@+id/tvUltimaActualizacion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Ultima actualizacion: Sin datos"
+            android:textColor="#52665A" />
+
+        <TextView
+            style="@style/SectionTitle"
+            android:text="Sensores" />
+
+        <TextView
+            android:id="@+id/tvSensores"
+            style="@style/TextBlock"
+            android:text="Sin datos" />
+
+        <TextView
+            style="@style/SectionTitle"
+            android:text="Actuadores" />
+
+        <TextView
+            android:id="@+id/tvActuadores"
+            style="@style/TextBlock"
+            android:text="Sin datos" />
+
+        <TextView
+            style="@style/SectionTitle"
+            android:text="Configuracion de automatizacion" />
+
+        <TextView
+            android:id="@+id/tvConfiguracion"
+            style="@style/TextBlock"
+            android:text="Sin datos" />
+
+        <TextView
+            style="@style/SectionTitle"
+            android:text="Accesos RFID recientes" />
+
+        <TextView
+            android:id="@+id/tvAccesos"
+            style="@style/TextBlock"
+            android:text="Sin datos" />
+
+        <TextView
+            style="@style/SectionTitle"
+            android:text="Comandos recientes" />
+
+        <TextView
+            android:id="@+id/tvComandos"
+            style="@style/TextBlock"
+            android:text="Sin datos" />
+
+        <TextView
+            android:id="@+id/tvNotaAlcance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="24dp"
+            android:text="Esta fase es solo monitoreo. La app no crea comandos ni controla actuadores."
+            android:textColor="#52665A"
+            android:textSize="13sp" />
+    </LinearLayout>
+</ScrollView>

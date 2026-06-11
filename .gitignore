@@ -3,3 +3,10 @@ mysql_data/
 *.log
 .DS_Store
 Thumbs.db
+# Android Studio / Gradle
+android-app/.idea/
+android-app/.gradle/
+android-app/local.properties
+android-app/build/
+android-app/app/build/
+*.iml
