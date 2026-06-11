@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
-    private static final String DEFAULT_API_BASE_URL = "http://10.0.2.2:8080/api";
+    private static final String DEFAULT_API_BASE_URL = "https://irregular-mothball-flyover.ngrok-free.dev/api";
     private static final String PREFS_NAME = "invernadero_prefs";
     private static final String PREF_API_BASE_URL = "api_base_url";
 
@@ -29,6 +29,7 @@ public class MainActivity extends Activity {
     private TextView tvConfiguracion;
     private TextView tvAccesos;
     private TextView tvComandos;
+    private TextView tvControlMensaje;
     private SharedPreferences preferences;
     private ExecutorService executorService;
 
@@ -48,15 +49,28 @@ public class MainActivity extends Activity {
         tvConfiguracion = findViewById(R.id.tvConfiguracion);
         tvAccesos = findViewById(R.id.tvAccesos);
         tvComandos = findViewById(R.id.tvComandos);
+        tvControlMensaje = findViewById(R.id.tvControlMensaje);
         Button btnGuardarUrl = findViewById(R.id.btnGuardarUrl);
         Button btnProbarConexion = findViewById(R.id.btnProbarConexion);
         Button btnActualizarDatos = findViewById(R.id.btnActualizarDatos);
+        Button btnVentiladorEncender = findViewById(R.id.btnVentiladorEncender);
+        Button btnVentiladorApagar = findViewById(R.id.btnVentiladorApagar);
+        Button btnBombaEncender = findViewById(R.id.btnBombaEncender);
+        Button btnBombaApagar = findViewById(R.id.btnBombaApagar);
+        Button btnLamparaEncender = findViewById(R.id.btnLamparaEncender);
+        Button btnLamparaApagar = findViewById(R.id.btnLamparaApagar);
 
         etApiBaseUrl.setText(obtenerApiBaseUrl());
 
         btnGuardarUrl.setOnClickListener(view -> guardarUrlBase());
         btnProbarConexion.setOnClickListener(view -> probarConexion());
         btnActualizarDatos.setOnClickListener(view -> cargarTodosLosDatos());
+        btnVentiladorEncender.setOnClickListener(view -> crearComando("ventilador", 1));
+        btnVentiladorApagar.setOnClickListener(view -> crearComando("ventilador", 0));
+        btnBombaEncender.setOnClickListener(view -> crearComando("bomba", 1));
+        btnBombaApagar.setOnClickListener(view -> crearComando("bomba", 0));
+        btnLamparaEncender.setOnClickListener(view -> crearComando("lampara", 1));
+        btnLamparaApagar.setOnClickListener(view -> crearComando("lampara", 0));
     }
 
     @Override
@@ -72,8 +86,8 @@ public class MainActivity extends Activity {
         return preferences.getString(PREF_API_BASE_URL, DEFAULT_API_BASE_URL);
     }
 
-    private ApiClient crearApiClient() {
-        return new ApiClient(etApiBaseUrl.getText().toString());
+    private ApiClient crearApiClient(String apiBaseUrl) {
+        return new ApiClient(apiBaseUrl);
     }
 
     private void guardarUrlBase() {
@@ -85,16 +99,19 @@ public class MainActivity extends Activity {
         }
 
         preferences.edit().putString(PREF_API_BASE_URL, apiBaseUrl).apply();
+        aplicarEstadoAdvertencia();
         tvEstadoApi.setText("URL guardada: " + apiBaseUrl);
     }
 
     private void probarConexion() {
         guardarUrlBase();
+        String apiBaseUrl = etApiBaseUrl.getText().toString().trim();
+        aplicarEstadoAdvertencia();
         tvEstadoApi.setText("Probando conexion...");
 
         executorService.execute(() -> {
             try {
-                JSONObject status = crearApiClient().getJson("/status.php");
+                JSONObject status = crearApiClient(apiBaseUrl).getJson("/status.php");
                 boolean ok = status.optBoolean("ok", false);
                 String servicio = status.optString("servicio", "Sin servicio");
                 String baseDatos = status.optString("base_datos", "Sin base de datos");
@@ -103,6 +120,11 @@ public class MainActivity extends Activity {
                         : "API no disponible";
 
                 runOnUiThread(() -> {
+                    if (ok) {
+                        aplicarEstadoExito();
+                    } else {
+                        aplicarEstadoError();
+                    }
                     tvEstadoApi.setText(mensaje);
                     actualizarHora();
                 });
@@ -114,10 +136,12 @@ public class MainActivity extends Activity {
 
     private void cargarTodosLosDatos() {
         guardarUrlBase();
+        String apiBaseUrl = etApiBaseUrl.getText().toString().trim();
+        aplicarEstadoAdvertencia();
         tvEstadoApi.setText("Actualizando datos...");
 
         executorService.execute(() -> {
-            ApiClient apiClient = crearApiClient();
+            ApiClient apiClient = crearApiClient(apiBaseUrl);
             String estadoApi = cargarEstadoApi(apiClient);
             String sensores = cargarSensores(apiClient);
             String actuadores = cargarActuadores(apiClient);
@@ -126,6 +150,11 @@ public class MainActivity extends Activity {
             String comandos = cargarComandos(apiClient);
 
             runOnUiThread(() -> {
+                if (estadoApi.startsWith("API conectada")) {
+                    aplicarEstadoExito();
+                } else {
+                    aplicarEstadoError();
+                }
                 tvEstadoApi.setText(estadoApi);
                 tvSensores.setText(sensores);
                 tvActuadores.setText(actuadores);
@@ -280,11 +309,96 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void crearComando(String actuador, int estadoSolicitado) {
+        if (!esActuadorControlPermitido(actuador)) {
+            mostrarErrorControl("Actuador no permitido desde la app");
+            return;
+        }
+
+        if (estadoSolicitado != 0 && estadoSolicitado != 1) {
+            mostrarErrorControl("Estado solicitado invalido");
+            return;
+        }
+
+        guardarUrlBase();
+        String apiBaseUrl = etApiBaseUrl.getText().toString().trim();
+        aplicarControlAdvertencia();
+        tvControlMensaje.setText("Creando comando pendiente...");
+
+        executorService.execute(() -> {
+            try {
+                ApiClient apiClient = crearApiClient(apiBaseUrl);
+                JSONObject body = new JSONObject();
+                body.put("actuador", actuador);
+                body.put("estado_solicitado", estadoSolicitado);
+                body.put("origen", "app");
+
+                JSONObject response = apiClient.postJson("/comandos.php", body);
+                boolean ok = response.optBoolean("ok", false);
+                String mensaje = response.optString("mensaje", "Comando creado correctamente");
+
+                if (!ok) {
+                    throw new Exception(mensaje);
+                }
+
+                String comandos = cargarComandos(apiClient);
+
+                runOnUiThread(() -> {
+                    aplicarControlExito();
+                    tvControlMensaje.setText(mensaje);
+                    tvComandos.setText(comandos);
+                    actualizarHora();
+                });
+            } catch (Exception e) {
+                mostrarErrorControl("Error al crear comando: " + e.getMessage());
+            }
+        });
+    }
+
     private void mostrarError(String mensaje) {
         runOnUiThread(() -> {
+            aplicarEstadoError();
             tvEstadoApi.setText(mensaje);
             actualizarHora();
         });
+    }
+
+    private void mostrarErrorControl(String mensaje) {
+        runOnUiThread(() -> {
+            aplicarControlError();
+            tvControlMensaje.setText(mensaje);
+            actualizarHora();
+        });
+    }
+
+    private void aplicarEstadoExito() {
+        tvEstadoApi.setBackgroundResource(R.drawable.bg_status_success);
+        tvEstadoApi.setTextColor(getResources().getColor(R.color.color_success));
+    }
+
+    private void aplicarEstadoError() {
+        tvEstadoApi.setBackgroundResource(R.drawable.bg_status_error);
+        tvEstadoApi.setTextColor(getResources().getColor(R.color.color_error));
+    }
+
+    private void aplicarEstadoAdvertencia() {
+        tvEstadoApi.setBackgroundResource(R.drawable.bg_status_warning);
+        tvEstadoApi.setTextColor(getResources().getColor(R.color.color_warning));
+    }
+
+    private void aplicarControlExito() {
+        tvControlMensaje.setBackgroundResource(R.drawable.bg_status_success);
+        tvControlMensaje.setTextColor(getResources().getColor(R.color.color_success));
+    }
+
+    private void aplicarControlError() {
+        tvControlMensaje.setBackgroundResource(R.drawable.bg_status_error);
+        tvControlMensaje.setTextColor(getResources().getColor(R.color.color_error));
+    }
+
+    private void aplicarControlAdvertencia() {
+        tvControlMensaje.setBackgroundResource(R.drawable.bg_status_warning);
+        tvControlMensaje.setTextColor(getResources().getColor(R.color.color_warning));
     }
 
     private void actualizarHora() {
@@ -306,5 +420,11 @@ public class MainActivity extends Activity {
 
     private String activo(int value) {
         return value == 1 ? "activa" : "inactiva";
+    }
+
+    private boolean esActuadorControlPermitido(String actuador) {
+        return "ventilador".equals(actuador)
+                || "bomba".equals(actuador)
+                || "lampara".equals(actuador);
     }
 }

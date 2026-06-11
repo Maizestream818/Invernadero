@@ -2,7 +2,7 @@
 
 ## Descripcion
 
-Proyecto academico para un invernadero inteligente IoT. La version actual incluye base de datos MySQL, API REST en PHP puro, phpMyAdmin, panel web de monitoreo y documentacion para acceso externo con ngrok.
+Proyecto academico para un invernadero inteligente IoT. La version actual incluye base de datos MySQL, API REST en PHP puro, phpMyAdmin, panel web de monitoreo, app Android, simulador ESP32 y documentacion para acceso externo con ngrok.
 
 El panel web consume datos reales desde la API y permite monitorear lecturas, actuadores, configuracion, accesos RFID, eventos y comandos recientes. El panel no controla actuadores.
 
@@ -20,6 +20,7 @@ El panel web consume datos reales desde la API y permite monitorear lecturas, ac
 - PowerShell para pruebas
 - Java
 - XML Views
+- Arduino ESP32 para firmware base
 
 ## Requisitos
 
@@ -107,7 +108,7 @@ Muestra:
 - Ultimos eventos de actuadores.
 - Comandos recientes.
 
-El panel web no controla actuadores. Solo monitorea. El control remoto se reserva para la App Android en etapa posterior.
+El panel web no controla actuadores. Solo monitorea. La frase App Android en etapa posterior queda como referencia historica de fases previas; desde Fase 7 el control remoto permitido se hace desde la app Android mediante comandos pendientes.
 
 ## Uso con ngrok
 
@@ -141,6 +142,10 @@ powershell -ExecutionPolicy Bypass -File .\tests\probar_fase2.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase3.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase4.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase5_app.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase6_diseno.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase7_control_app.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_esp32_simulado.ps1
 ```
 
 ## Guias
@@ -168,7 +173,7 @@ En esta fase la app solo monitorea:
 - Accesos RFID recientes mediante `/accesos.php?limite=5`.
 - Comandos recientes mediante `/comandos.php?limite=5`.
 
-La app no crea comandos todavia y no controla actuadores. El control remoto se implementara despues.
+Desde Fase 7 la app puede crear comandos pendientes para ventilador, bomba y lampara. La ejecucion fisica por ESP32 se implementara despues.
 
 Pruebas manuales esperadas:
 
@@ -198,8 +203,92 @@ http://10.0.2.2:8080/api
 
 7. Cambiar la URL a una incorrecta; debe mostrar error sin cerrar la app.
 
+## Fase 6: Diseno visual unificado y URL ngrok por defecto
+
+Se unifico el diseno visual de web y app Android con una paleta verde inspirada en el invernadero, tarjetas redondeadas, botones verdes, fondos claros y etiquetas de estado consistentes.
+
+La app usa por defecto:
+
+```text
+https://irregular-mothball-flyover.ngrok-free.dev/api
+```
+
+Esa URL requiere que ngrok este corriendo con:
+
+```powershell
+ngrok http 8080
+```
+
+La URL puede editarse manualmente desde la app y se conserva si el usuario ya guardo otra direccion.
+
+No se agrego control remoto nuevo en esta fase.
+
+## Fase 7: Control remoto desde app Android
+
+La app Android puede crear comandos para:
+
+- `ventilador`
+- `bomba`
+- `lampara`
+
+Los comandos se envian con `POST /api/comandos.php` y se guardan en la API como pendientes. El ESP32 ejecutara esos comandos en una fase posterior.
+
+La app no se conecta directamente a MySQL. La app no se conecta directamente al ESP32. El flujo sigue siendo:
+
+```text
+Android -> API REST PHP -> MySQL
+```
+
+El servo se mantiene controlado principalmente por RFID y no se controla desde la app.
+
+Prueba de Fase 7:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase7_control_app.ps1
+```
+
+## Fase 8: Simulador ESP32 e integracion con API
+
+Se agrego una integracion simulada del ESP32 para validar el flujo completo sin hardware fisico.
+
+Incluye:
+
+- Simulador PowerShell del ESP32.
+- Contrato de comunicacion `ESP32 -> API REST PHP -> MySQL`.
+- Firmware base documentado para ESP32.
+- Prueba limpia que reconstruye la base desde cero.
+
+Despues de reconstruir, la base conserva unicamente estos datos semilla:
+
+- Configuracion inicial.
+- Tarjeta RFID demo con UID `A1B2C3D4`.
+
+El simulador genera datos nuevos en:
+
+- `lecturas`
+- `estados_actuadores`
+- `accesos_rfid`
+- `comandos_actuadores`
+- `eventos_actuadores`
+
+La comunicacion sigue siendo HTTP JSON hacia la API REST PHP. El ESP32 real se implementara despues con pines, sensores y cableado reales.
+
+Ejecutar simulador sin reiniciar base:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1
+```
+
+Ejecutar prueba limpia completa:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_esp32_simulado.ps1
+```
+
+`probar_fase8_esp32_simulado.ps1` ejecuta `docker compose down -v`, por lo tanto borra la base de datos persistida del volumen MySQL.
+
 ## Nota de alcance
 
-El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin, panel web de monitoreo y app Android base de monitoreo. La frase App Android en etapa posterior aplica al control remoto pendiente. El codigo ESP32 se implementara despues.
+El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin, panel web de monitoreo, app Android con monitoreo/control por comandos pendientes y simulador ESP32. El codigo ESP32 real con pines finales se implementara despues.
 
 No se implementan login, roles, frameworks, MQTT, WebSockets, control manual desde web ni nuevas tablas en esta etapa.

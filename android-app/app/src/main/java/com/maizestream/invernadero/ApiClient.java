@@ -7,8 +7,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 public class ApiClient {
     private static final int CONNECT_TIMEOUT_MS = 8000;
@@ -30,6 +32,43 @@ public class ApiClient {
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setRequestProperty("Accept", "application/json");
+
+            int statusCode = connection.getResponseCode();
+            InputStream stream = statusCode >= 200 && statusCode < 300
+                    ? connection.getInputStream()
+                    : connection.getErrorStream();
+            String response = leerRespuesta(stream);
+
+            if (statusCode < 200 || statusCode >= 300) {
+                throw new IOException("HTTP " + statusCode + ": " + response);
+            }
+
+            return new JSONObject(response);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    public JSONObject postJson(String endpoint, JSONObject body) throws IOException, JSONException {
+        HttpURLConnection connection = null;
+
+        try {
+            URL url = new URL(baseUrl + normalizarEndpoint(endpoint));
+            byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
+
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            connection.setDoOutput(true);
+
+            try (OutputStream outputStream = connection.getOutputStream()) {
+                outputStream.write(payload);
+            }
 
             int statusCode = connection.getResponseCode();
             InputStream stream = statusCode >= 200 && statusCode < 300

@@ -10,3 +10,4 @@ android-app/local.properties
 android-app/build/
 android-app/app/build/
 *.iml
+esp32/firmware_base/config.h

@@ -3,7 +3,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#EEF4EF"
+    android:background="@color/color_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -12,68 +12,89 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:id="@+id/tvTitulo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Invernadero Inteligente IoT"
-            android:textColor="#173D28"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="App Android de monitoreo"
-            android:textColor="#52665A"
-            android:textSize="14sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="URL base de API"
-            android:textColor="#1D2B22"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/etApiBaseUrl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:hint="http://10.0.2.2:8080/api"
-            android:inputType="textUri"
-            android:singleLine="true" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_header"
+            android:elevation="4dp"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.06"
+                android:text="APP DE MONITOREO"
+                android:textColor="#DDEFE6"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvTitulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Invernadero Inteligente IoT"
+                android:textColor="@color/white"
+                android:textSize="25sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Monitoreo Android conectado a la API REST PHP."
+                android:textColor="#DDEFE6"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/SectionTitle"
+            android:text="Conexion" />
+
+        <LinearLayout
+            style="@style/CardContainer"
             android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="URL base de API"
+                android:textColor="@color/color_text"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/etApiBaseUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_input"
+                android:hint="https://irregular-mothball-flyover.ngrok-free.dev/api"
+                android:inputType="textUri"
+                android:singleLine="true"
+                android:textColor="@color/color_text"
+                android:textColorHint="@color/color_muted" />
 
             <Button
                 android:id="@+id/btnGuardarUrl"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                style="@style/ButtonSecondary"
+                android:layout_marginTop="12dp"
                 android:text="Guardar URL" />
 
             <Button
                 android:id="@+id/btnProbarConexion"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                style="@style/ButtonSecondary"
                 android:text="Probar conexion" />
 
             <Button
                 android:id="@+id/btnActualizarDatos"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                style="@style/ButtonPrimary"
                 android:text="Actualizar datos" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/tvEstadoApi"
-            style="@style/TextBlock"
+            style="@style/StatusBlock"
             android:layout_marginTop="14dp"
             android:text="API no verificada" />
 
@@ -81,9 +102,9 @@
             android:id="@+id/tvUltimaActualizacion"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="6dp"
             android:text="Ultima actualizacion: Sin datos"
-            android:textColor="#52665A" />
+            android:textColor="@color/color_muted" />
 
         <TextView
             style="@style/SectionTitle"
@@ -102,6 +123,82 @@
             android:id="@+id/tvActuadores"
             style="@style/TextBlock"
             android:text="Sin datos" />
+
+        <TextView
+            style="@style/SectionTitle"
+            android:text="Control remoto" />
+
+        <LinearLayout
+            style="@style/CardContainer"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Los comandos se guardan como pendientes para que el ESP32 los ejecute."
+                android:textColor="@color/color_muted"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvControlMensaje"
+                style="@style/StatusBlock"
+                android:layout_marginTop="12dp"
+                android:text="Sin comandos enviados desde la app" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Ventilador"
+                android:textColor="@color/color_text"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnVentiladorEncender"
+                style="@style/ButtonPrimary"
+                android:text="Encender ventilador" />
+
+            <Button
+                android:id="@+id/btnVentiladorApagar"
+                style="@style/ButtonSecondary"
+                android:text="Apagar ventilador" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Bomba"
+                android:textColor="@color/color_text"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnBombaEncender"
+                style="@style/ButtonPrimary"
+                android:text="Encender bomba" />
+
+            <Button
+                android:id="@+id/btnBombaApagar"
+                style="@style/ButtonSecondary"
+                android:text="Apagar bomba" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Lampara"
+                android:textColor="@color/color_text"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnLamparaEncender"
+                style="@style/ButtonPrimary"
+                android:text="Encender lampara" />
+
+            <Button
+                android:id="@+id/btnLamparaApagar"
+                style="@style/ButtonSecondary"
+                android:text="Apagar lampara" />
+        </LinearLayout>
 
         <TextView
             style="@style/SectionTitle"
@@ -136,8 +233,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:layout_marginBottom="24dp"
-            android:text="Esta fase es solo monitoreo. La app no crea comandos ni controla actuadores."
-            android:textColor="#52665A"
+            android:text="La app crea comandos pendientes para ventilador, bomba y lampara. El servo se mantiene controlado por RFID."
+            android:textColor="@color/color_muted"
             android:textSize="13sp" />
     </LinearLayout>
 </ScrollView>
