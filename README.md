@@ -68,6 +68,7 @@ Tablas:
 - `accesos_rfid`
 - `eventos_actuadores`
 - `comandos_actuadores`
+- `cola_automatizacion`
 - `calibraciones_sensores`
 
 ## Endpoints principales
@@ -84,6 +85,9 @@ Tablas:
 - `GET /api/comandos.php`
 - `POST /api/comandos.php`
 - `PUT /api/comandos.php`
+- `GET /api/cola_automatizacion.php`
+- `POST /api/cola_automatizacion.php`
+- `PUT /api/cola_automatizacion.php`
 - `GET /api/eventos.php`
 - `POST /api/eventos.php`
 
@@ -108,7 +112,7 @@ Muestra:
 - Ultimos eventos de actuadores.
 - Comandos recientes.
 
-El panel web no controla actuadores. Solo monitorea. La frase App Android en etapa posterior queda como referencia historica de fases previas; desde Fase 7 el control remoto permitido se hace desde la app Android mediante comandos pendientes.
+El panel web y la app Android pueden crear comandos de usuario para `ventilador`, `bomba` y `lampara`. La API bloquea el comando si el actuador esta bajo control de automatizacion.
 
 ## Uso con ngrok
 
@@ -150,6 +154,7 @@ powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1 -CrearComando
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_esp32_simulado.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_1_app_actualizacion.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase9_automatizacion.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase11_bloqueos.ps1
 ```
 
 ## Guias
@@ -328,7 +333,7 @@ Cambios:
 - El mismo concepto visual se aplica en app y web.
 - El simulador ESP32 procesa todos los comandos pendientes consultando `/api/comandos.php?estado=pendiente&limite=50` y solo crea un comando de prueba cuando se ejecuta con `-CrearComandoPrueba`.
 
-No se modificaron endpoints ni base de datos.
+Desde Fase 11 los controles visuales tambien muestran turno actual y cola de automatizacion.
 
 Prueba de Fase 8.1:
 
@@ -349,7 +354,7 @@ Reglas implementadas:
 - Si `intensidad_luz_lux < luz_min_lux` y `iluminacion_automatica = 1`, enciende lampara.
 - Si `intensidad_luz_lux >= luz_min_lux` y `iluminacion_automatica = 1`, apaga lampara.
 
-Si una automatizacion esta desactivada, ese actuador no se cambia automaticamente. Los comandos manuales de app/web se procesan despues de la automatizacion, por lo que tienen prioridad al final del ciclo. `servo_acceso` no se controla por comandos manuales.
+Si una automatizacion esta desactivada, ese actuador no se cambia automaticamente. Desde Fase 11 la prioridad depende del turno por actuador: usuario y automatizacion no se interrumpen. `servo_acceso` no se controla por comandos manuales.
 
 El firmware base en `esp32/firmware_base/firmware_base.ino` queda preparado para:
 
@@ -376,8 +381,50 @@ Prueba de Fase 9:
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase9_automatizacion.ps1
 ```
 
+## Fase 11: Turnos por actuador y cola de automatizacion
+
+Cada actuador controlable (`ventilador`, `bomba`, `lampara`) guarda su control actual en `estados_actuadores`:
+
+- `control_ventilador`
+- `control_bomba`
+- `control_lampara`
+
+Valores posibles:
+
+- `libre`
+- `usuario`
+- `automatizacion`
+
+El estado inicial queda apagado y `libre`. El servo de acceso queda fuera de este sistema.
+
+Reglas:
+
+- Usuario solo puede tomar un actuador `libre` y apagado.
+- Al tomarlo, queda encendido con control `usuario`.
+- Al tocar de nuevo, se apaga y vuelve a `libre`.
+- Automatizacion solo toma actuadores `libre` y apagados.
+- Si automatizacion necesita un actuador ocupado por usuario, crea una tarea pendiente en `cola_automatizacion`.
+- Cuando el usuario libera el actuador, el simulador atiende la cola: ejecuta si la condicion automatica sigue aplicando o cancela si ya no aplica.
+- Usuario no puede apagar un actuador con control `automatizacion`.
+- La cola no duplica tareas pendientes para el mismo actuador y accion.
+
+`GET /api/actuadores.php` devuelve el ultimo estado, los controles actuales y `cola_automatizacion` pendiente para que web/app reflejen bloqueos y espera.
+
+Textos de UI:
+
+- `Apagado · Libre`
+- `Encendido · Control usuario`
+- `Encendido · Control automatizacion`
+- `Automatizacion en espera`
+
+Prueba de Fase 11:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase11_bloqueos.ps1
+```
+
 ## Nota de alcance
 
-El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin, panel web, app Android con monitoreo/control por comandos pendientes, simulador ESP32 con automatizacion y firmware base ESP32. Los pines documentados son sugeridos y deben confirmarse con el cableado fisico final.
+El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin, panel web, app Android con monitoreo/control por comandos pendientes, simulador ESP32 con automatizacion, turnos por actuador y firmware base ESP32. Los pines documentados son sugeridos y deben confirmarse con el cableado fisico final.
 
-No se implementan login, roles, frameworks, MQTT, WebSockets, control manual desde web ni nuevas tablas en esta etapa.
+No se implementan login, roles, frameworks, MQTT ni WebSockets en esta etapa.

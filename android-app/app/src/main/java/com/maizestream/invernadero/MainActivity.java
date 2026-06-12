@@ -66,6 +66,12 @@ public class MainActivity extends Activity {
     private boolean hayComandoPendienteBomba = false;
     private boolean hayComandoPendienteVentilador = false;
     private boolean hayComandoPendienteLampara = false;
+    private String controlActualBomba = "libre";
+    private String controlActualVentilador = "libre";
+    private String controlActualLampara = "libre";
+    private boolean colaAutomatizacionBomba = false;
+    private boolean colaAutomatizacionVentilador = false;
+    private boolean colaAutomatizacionLampara = false;
     private JSONObject configuracionActual = null;
 
     @Override
@@ -317,6 +323,12 @@ public class MainActivity extends Activity {
                 estadoActualBomba = null;
                 estadoActualVentilador = null;
                 estadoActualLampara = null;
+                controlActualBomba = "libre";
+                controlActualVentilador = "libre";
+                controlActualLampara = "libre";
+                colaAutomatizacionBomba = false;
+                colaAutomatizacionVentilador = false;
+                colaAutomatizacionLampara = false;
                 runOnUiThread(() -> {
                     txtActVentilador.setText("Sin datos");
                     txtActBomba.setText("Sin datos");
@@ -332,9 +344,13 @@ public class MainActivity extends Activity {
             estadoActualVentilador = estado.optInt("ventilador", 0);
             estadoActualBomba = estado.optInt("bomba", 0);
             estadoActualLampara = estado.optInt("lampara", 0);
-            String ventilador = binario(estadoActualVentilador, "Encendido", "Apagado");
-            String bomba = binario(estadoActualBomba, "Encendido", "Apagado");
-            String lampara = binario(estadoActualLampara, "Encendido", "Apagado");
+            controlActualVentilador = estado.optString("control_ventilador", "libre");
+            controlActualBomba = estado.optString("control_bomba", "libre");
+            controlActualLampara = estado.optString("control_lampara", "libre");
+            actualizarColaAutomatizacionDesdeActuadores(response);
+            String ventilador = textoEstadoTurno(estadoActualVentilador, controlActualVentilador);
+            String bomba = textoEstadoTurno(estadoActualBomba, controlActualBomba);
+            String lampara = textoEstadoTurno(estadoActualLampara, controlActualLampara);
             String servo = binario(estado.optInt("servo_acceso", 0), "Abierto", "Cerrado");
 
             runOnUiThread(() -> {
@@ -350,6 +366,9 @@ public class MainActivity extends Activity {
             estadoActualBomba = null;
             estadoActualVentilador = null;
             estadoActualLampara = null;
+            controlActualBomba = "libre";
+            controlActualVentilador = "libre";
+            controlActualLampara = "libre";
             runOnUiThread(() -> {
                 txtActVentilador.setText("Sin datos");
                 txtActBomba.setText("Sin datos");
@@ -503,6 +522,7 @@ public class MainActivity extends Activity {
 
     private void crearComandoSegunEstado(String actuador) {
         Integer estadoActual = obtenerEstadoActual(actuador);
+        String controlActual = obtenerControlActual(actuador);
 
         if (estadoActual == null) {
             mostrarMensajeControl("Estado desconocido. Esperando estado del actuador.", false);
@@ -512,6 +532,12 @@ public class MainActivity extends Activity {
 
         if (hayComandoPendiente(actuador)) {
             mostrarMensajeControl("Comando pendiente para " + nombreActuador(actuador), false);
+            actualizarControlesRemotos();
+            return;
+        }
+
+        if ("automatizacion".equals(controlActual)) {
+            mostrarMensajeControl("Control de automatizacion activo para " + nombreActuador(actuador), false);
             actualizarControlesRemotos();
             return;
         }
@@ -569,6 +595,8 @@ public class MainActivity extends Activity {
                 "bomba",
                 estadoActualBomba,
                 hayComandoPendienteBomba,
+                controlActualBomba,
+                colaAutomatizacionBomba,
                 txtEstadoBombaControl,
                 cardActBomba
         );
@@ -576,6 +604,8 @@ public class MainActivity extends Activity {
                 "ventilador",
                 estadoActualVentilador,
                 hayComandoPendienteVentilador,
+                controlActualVentilador,
+                colaAutomatizacionVentilador,
                 txtEstadoVentiladorControl,
                 cardActVentilador
         );
@@ -583,6 +613,8 @@ public class MainActivity extends Activity {
                 "lampara",
                 estadoActualLampara,
                 hayComandoPendienteLampara,
+                controlActualLampara,
+                colaAutomatizacionLampara,
                 txtEstadoLamparaControl,
                 cardActLampara
         );
@@ -593,6 +625,8 @@ public class MainActivity extends Activity {
             String actuador,
             Integer estadoActual,
             boolean tieneComandoPendiente,
+            String controlActual,
+            boolean tieneColaAutomatizacion,
             TextView estadoView,
             View card
     ) {
@@ -618,7 +652,23 @@ public class MainActivity extends Activity {
             return;
         }
 
-        estadoView.setText(estadoActual == 1 ? "Toca para apagar" : "Toca para encender");
+        if ("automatizacion".equals(controlActual)) {
+            estadoView.setText("Encendido · Control automatizacion");
+            estadoView.setTextColor(getResources().getColor(R.color.white));
+            card.setBackgroundResource(R.drawable.bg_actuator_on);
+            card.setEnabled(false);
+            card.setClickable(false);
+            return;
+        }
+
+        if (tieneColaAutomatizacion) {
+            estadoView.setText("Automatizacion en espera");
+        } else if ("usuario".equals(controlActual)) {
+            estadoView.setText("Encendido · Control usuario");
+        } else {
+            estadoView.setText("Apagado · Libre");
+        }
+
         estadoView.setTextColor(getResources().getColor(estadoActual == 1 ? R.color.white : R.color.color_muted));
         card.setBackgroundResource(estadoActual == 1 ? R.drawable.bg_actuator_on : R.drawable.bg_actuator_off);
         card.setEnabled(true);
@@ -628,12 +678,15 @@ public class MainActivity extends Activity {
     private void actualizarMensajeGeneralControl() {
         boolean hayPendientes = hayComandoPendienteBomba
                 || hayComandoPendienteVentilador
-                || hayComandoPendienteLampara;
+                || hayComandoPendienteLampara
+                || colaAutomatizacionBomba
+                || colaAutomatizacionVentilador
+                || colaAutomatizacionLampara;
 
         if (hayPendientes) {
             tvComandosPendientes.setBackgroundResource(R.drawable.bg_status_warning);
             tvComandosPendientes.setTextColor(getResources().getColor(R.color.color_warning));
-            tvComandosPendientes.setText("Comandos pendientes detectados");
+            tvComandosPendientes.setText("Comandos pendientes detectados / Automatizacion en espera");
             return;
         }
 
@@ -672,6 +725,63 @@ public class MainActivity extends Activity {
         }
 
         return false;
+    }
+
+    private String obtenerControlActual(String actuador) {
+        if ("bomba".equals(actuador)) {
+            return controlActualBomba;
+        }
+
+        if ("ventilador".equals(actuador)) {
+            return controlActualVentilador;
+        }
+
+        if ("lampara".equals(actuador)) {
+            return controlActualLampara;
+        }
+
+        return "libre";
+    }
+
+    private void actualizarColaAutomatizacionDesdeActuadores(JSONObject response) {
+        colaAutomatizacionBomba = false;
+        colaAutomatizacionVentilador = false;
+        colaAutomatizacionLampara = false;
+        JSONArray cola = response.optJSONArray("cola_automatizacion");
+
+        if (cola == null) {
+            return;
+        }
+
+        for (int i = 0; i < cola.length(); i++) {
+            JSONObject tarea = cola.optJSONObject(i);
+
+            if (tarea == null) {
+                continue;
+            }
+
+            String actuador = valor(tarea, "actuador");
+
+            if ("bomba".equals(actuador)) {
+                colaAutomatizacionBomba = true;
+            } else if ("ventilador".equals(actuador)) {
+                colaAutomatizacionVentilador = true;
+            } else if ("lampara".equals(actuador)) {
+                colaAutomatizacionLampara = true;
+            }
+        }
+    }
+
+    private String textoEstadoTurno(int estado, String control) {
+        if (estado == 1 && "usuario".equals(control)) {
+            return "Encendido · Control usuario";
+        }
+
+        if (estado == 1 && "automatizacion".equals(control)) {
+            return "Encendido · Control automatizacion";
+        }
+
+        return "Apagado · Libre";
     }
 
     private void marcarPendienteLocal(String actuador, boolean pendiente) {

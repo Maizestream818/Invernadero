@@ -12,25 +12,13 @@ try {
     $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
     if ($metodo === 'GET') {
-        $consulta = $pdo->query(
-            'SELECT id, lectura_id, ventilador, bomba, lampara, servo_acceso,
-                    modo_control, origen, fecha
-             FROM estados_actuadores
-             ORDER BY fecha DESC, id DESC
-             LIMIT 1'
-        );
-        $estado = $consulta !== false ? $consulta->fetch() : false;
+        $estado = obtener_ultimo_estado_actuadores($pdo);
+        $cola = obtener_cola_automatizacion($pdo);
 
         responder_json([
             'ok' => true,
-            'estado' => convertir_fila_enteros($estado ?: null, [
-                'id',
-                'lectura_id',
-                'ventilador',
-                'bomba',
-                'lampara',
-                'servo_acceso',
-            ]),
+            'estado' => $estado,
+            'cola_automatizacion' => $cola,
         ]);
     }
 
@@ -56,12 +44,24 @@ try {
     $servoAcceso = obtener_binario($datos, 'servo_acceso');
     $modoControl = validar_enum($datos['modo_control'], ['automatico', 'manual'], 'modo_control');
     $origen = validar_enum($datos['origen'], ['esp32', 'web', 'app', 'sistema'], 'origen');
+    $estadoActual = obtener_ultimo_estado_actuadores($pdo) ?? [];
+    $controlVentilador = array_key_exists('control_ventilador', $datos)
+        ? validar_enum($datos['control_ventilador'], ['libre', 'usuario', 'automatizacion'], 'control_ventilador')
+        : (string) ($estadoActual['control_ventilador'] ?? 'libre');
+    $controlBomba = array_key_exists('control_bomba', $datos)
+        ? validar_enum($datos['control_bomba'], ['libre', 'usuario', 'automatizacion'], 'control_bomba')
+        : (string) ($estadoActual['control_bomba'] ?? 'libre');
+    $controlLampara = array_key_exists('control_lampara', $datos)
+        ? validar_enum($datos['control_lampara'], ['libre', 'usuario', 'automatizacion'], 'control_lampara')
+        : (string) ($estadoActual['control_lampara'] ?? 'libre');
 
     $consulta = $pdo->prepare(
         'INSERT INTO estados_actuadores
-            (lectura_id, ventilador, bomba, lampara, servo_acceso, modo_control, origen)
+            (lectura_id, ventilador, bomba, lampara, servo_acceso,
+             control_ventilador, control_bomba, control_lampara, modo_control, origen)
          VALUES
-            (:lectura_id, :ventilador, :bomba, :lampara, :servo_acceso, :modo_control, :origen)'
+            (:lectura_id, :ventilador, :bomba, :lampara, :servo_acceso,
+             :control_ventilador, :control_bomba, :control_lampara, :modo_control, :origen)'
     );
 
     if ($lecturaId === null) {
@@ -74,6 +74,9 @@ try {
     $consulta->bindValue(':bomba', $bomba, PDO::PARAM_INT);
     $consulta->bindValue(':lampara', $lampara, PDO::PARAM_INT);
     $consulta->bindValue(':servo_acceso', $servoAcceso, PDO::PARAM_INT);
+    $consulta->bindValue(':control_ventilador', $controlVentilador);
+    $consulta->bindValue(':control_bomba', $controlBomba);
+    $consulta->bindValue(':control_lampara', $controlLampara);
     $consulta->bindValue(':modo_control', $modoControl);
     $consulta->bindValue(':origen', $origen);
     $consulta->execute();

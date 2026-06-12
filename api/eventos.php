@@ -66,6 +66,12 @@ try {
         'rfid_autorizado',
         'rfid_rechazado',
         'comando_manual',
+        'control_tomado_usuario',
+        'control_liberado_usuario',
+        'control_tomado_automatizacion',
+        'control_liberado_automatizacion',
+        'automatizacion_en_cola',
+        'automatizacion_cancelada',
         'inicio_sistema',
         'desconocido',
     ], 'motivo');

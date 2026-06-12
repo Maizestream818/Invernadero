@@ -266,9 +266,9 @@ Invoke-Check "Documentacion contiene mapa de pines y advertencias" {
     Assert-FileContains -Path $doc -Text "No conectar bomba, ventilador ni lampara directo a GPIO"
 }
 
-Invoke-Check "No se modificaron api/, sql/, Dockerfile ni docker-compose.yml" {
-    $diffTracked = git diff --name-only -- api sql Dockerfile docker-compose.yml
-    $diffUntracked = git ls-files --others --exclude-standard api sql Dockerfile docker-compose.yml
+Invoke-Check "No se modificaron Dockerfile ni docker-compose.yml" {
+    $diffTracked = git diff --name-only -- Dockerfile docker-compose.yml
+    $diffUntracked = git ls-files --others --exclude-standard Dockerfile docker-compose.yml
 
     if ($diffTracked -or $diffUntracked) {
         throw "Hay cambios fuera del alcance: $diffTracked $diffUntracked"
@@ -326,32 +326,23 @@ Invoke-Check "Simulador aplica reglas automaticas y registra eventos" {
     }
 }
 
-Invoke-Check "Comando manual tiene prioridad sobre automatizacion en el ciclo" {
-    $comando = Invoke-ApiJson -Method "POST" -Path "/api/comandos.php" -ExpectedStatus 201 -Body @{
+Invoke-Check "Usuario no interrumpe automatizacion activa" {
+    $comando = Invoke-ApiJson -Method "POST" -Path "/api/comandos.php" -ExpectedStatus 409 -Body @{
         actuador = "bomba"
         estado_solicitado = 0
         origen = "app"
     }
 
-    if ($comando.ok -ne $true -or -not $comando.id) {
-        throw "No se pudo crear comando manual para bomba."
+    if ($comando.ok -ne $false -or $comando.control_actual -ne "automatizacion") {
+        throw "La API no bloqueo el comando manual contra automatizacion."
     }
 
     Invoke-NativeCommand -FilePath "powershell" -Arguments @("-ExecutionPolicy", "Bypass", "-File", ".\tests\simular_esp32.ps1") | Out-Null
 
     $estado = Invoke-ApiJson -Method "GET" -Path "/api/actuadores.php"
 
-    if ($estado.estado.bomba -ne 0) {
-        throw "La bomba no quedo apagada por prioridad del comando manual."
-    }
-
-    $comandos = Invoke-ApiJson -Method "GET" -Path "/api/comandos.php?limite=20"
-    $manualEjecutado = @($comandos.comandos | Where-Object {
-        $_.id -eq $comando.id -and $_.actuador -eq "bomba" -and $_.estado_solicitado -eq 0 -and $_.estado_comando -eq "ejecutado"
-    })
-
-    if ($manualEjecutado.Count -ne 1) {
-        throw "El comando manual de bomba no quedo marcado como ejecutado."
+    if ($estado.estado.bomba -ne 1 -or $estado.estado.control_bomba -ne "automatizacion") {
+        throw "La bomba no conservo el control de automatizacion."
     }
 }
 

@@ -122,6 +122,21 @@ function Set-EstadoActuadorLocal {
     }
 }
 
+function Set-ControlActuadorLocal {
+    param(
+        [string]$Actuador,
+        [string]$Control
+    )
+
+    if ($Actuador -eq "ventilador") {
+        $script:ControlVentilador = $Control
+    } elseif ($Actuador -eq "bomba") {
+        $script:ControlBomba = $Control
+    } elseif ($Actuador -eq "lampara") {
+        $script:ControlLampara = $Control
+    }
+}
+
 function Get-EstadoActuadorLocal {
     param([string]$Actuador)
 
@@ -140,8 +155,43 @@ function Get-EstadoActuadorLocal {
     return 0
 }
 
+function Get-ControlActuadorLocal {
+    param([string]$Actuador)
+
+    if ($Actuador -eq "ventilador") {
+        return $script:ControlVentilador
+    }
+
+    if ($Actuador -eq "bomba") {
+        return $script:ControlBomba
+    }
+
+    if ($Actuador -eq "lampara") {
+        return $script:ControlLampara
+    }
+
+    return "libre"
+}
+
 function Format-EstadoActuadores {
-    return "ventilador=$script:EstadoVentilador, bomba=$script:EstadoBomba, lampara=$script:EstadoLampara, servo_acceso=$script:EstadoServoAcceso"
+    return "ventilador=$script:EstadoVentilador/$script:ControlVentilador, bomba=$script:EstadoBomba/$script:ControlBomba, lampara=$script:EstadoLampara/$script:ControlLampara, servo_acceso=$script:EstadoServoAcceso"
+}
+
+function Sync-EstadoActuadoresDesdeApi {
+    $response = Invoke-ApiJson -Method "GET" -Endpoint "/actuadores.php"
+
+    if ($response.ok -ne $true -or $null -eq $response.estado) {
+        return
+    }
+
+    $estado = $response.estado
+    $script:EstadoVentilador = [int]$estado.ventilador
+    $script:EstadoBomba = [int]$estado.bomba
+    $script:EstadoLampara = [int]$estado.lampara
+    $script:EstadoServoAcceso = [int]$estado.servo_acceso
+    $script:ControlVentilador = if ($estado.control_ventilador) { [string]$estado.control_ventilador } else { "libre" }
+    $script:ControlBomba = if ($estado.control_bomba) { [string]$estado.control_bomba } else { "libre" }
+    $script:ControlLampara = if ($estado.control_lampara) { [string]$estado.control_lampara } else { "libre" }
 }
 
 function Get-ConfiguracionAutomatizacion {
@@ -185,6 +235,9 @@ function Send-EstadoActuadores {
         bomba = $script:EstadoBomba
         lampara = $script:EstadoLampara
         servo_acceso = $script:EstadoServoAcceso
+        control_ventilador = $script:ControlVentilador
+        control_bomba = $script:ControlBomba
+        control_lampara = $script:ControlLampara
         modo_control = "automatico"
         origen = "esp32"
     }
@@ -223,6 +276,58 @@ function Register-EventoActuador {
     }
 }
 
+function Add-ColaAutomatizacion {
+    param(
+        [string]$Actuador,
+        [string]$Motivo,
+        [string]$Detalle
+    )
+
+    $body = @{
+        actuador = $Actuador
+        accion = "encender"
+        motivo = $Motivo
+        detalle = $Detalle
+    }
+
+    if ($null -ne $script:UltimaLecturaId) {
+        $body.lectura_id = $script:UltimaLecturaId
+    }
+
+    $cola = Invoke-ApiJson -Method "POST" -Endpoint "/cola_automatizacion.php" -Body $body -ExpectedStatus 201
+    Register-EventoActuador -Actuador $Actuador -EstadoAnterior (Get-EstadoActuadorLocal -Actuador $Actuador) -EstadoNuevo (Get-EstadoActuadorLocal -Actuador $Actuador) -Motivo "automatizacion_en_cola"
+    $script:DecisionesAutomaticas += "$Detalle / automatizacion en cola"
+    return $cola
+}
+
+function Set-ColaAutomatizacionEstado {
+    param(
+        [int]$Id,
+        [string]$EstadoTarea,
+        [string]$Detalle
+    )
+
+    $actualizada = Invoke-ApiJson -Method "PUT" -Endpoint "/cola_automatizacion.php" -Body @{
+        id = $Id
+        estado_tarea = $EstadoTarea
+        detalle = $Detalle
+    }
+
+    if ($actualizada.ok -ne $true) {
+        throw "No se pudo actualizar la tarea de cola $Id."
+    }
+}
+
+function Get-ColaAutomatizacionPendiente {
+    $response = Invoke-ApiJson -Method "GET" -Endpoint "/cola_automatizacion.php?estado=pendiente"
+
+    if ($response.ok -ne $true -or $null -eq $response.cola) {
+        return @()
+    }
+
+    return @($response.cola)
+}
+
 function Set-ComandoEstado {
     param(
         [int]$Id,
@@ -255,6 +360,46 @@ function Get-ComandosPendientes {
     return @($response.comandos)
 }
 
+function Test-CondicionAutomaticaActiva {
+    param(
+        [string]$Actuador,
+        [object]$Lectura = $script:UltimaLectura,
+        [object]$Configuracion = $script:ConfiguracionActual
+    )
+
+    if ($null -eq $Lectura -or $null -eq $Configuracion) {
+        return $false
+    }
+
+    if ($Actuador -eq "ventilador") {
+        return [int]$Configuracion.ventilacion_automatica -eq 1 -and [double]$Lectura.temperatura_c -gt [double]$Configuracion.temperatura_max_c
+    }
+
+    if ($Actuador -eq "bomba") {
+        return [int]$Configuracion.riego_automatico -eq 1 -and [double]$Lectura.humedad_suelo_pct -lt [double]$Configuracion.humedad_suelo_min_pct
+    }
+
+    if ($Actuador -eq "lampara") {
+        return [int]$Configuracion.iluminacion_automatica -eq 1 -and [double]$Lectura.intensidad_luz_lux -lt [double]$Configuracion.luz_min_lux
+    }
+
+    return $false
+}
+
+function Get-MotivoEncendidoAutomatico {
+    param([string]$Actuador)
+
+    if ($Actuador -eq "ventilador") {
+        return "temperatura_alta"
+    }
+
+    if ($Actuador -eq "bomba") {
+        return "suelo_seco"
+    }
+
+    return "luz_baja"
+}
+
 function Set-ActuadorAutomatico {
     param(
         [string]$Actuador,
@@ -264,15 +409,55 @@ function Set-ActuadorAutomatico {
     )
 
     $estadoAnterior = Get-EstadoActuadorLocal -Actuador $Actuador
+    $controlActual = Get-ControlActuadorLocal -Actuador $Actuador
 
-    if ($estadoAnterior -eq $EstadoNuevo) {
+    if ($controlActual -eq "usuario") {
+        if ($EstadoNuevo -eq 1) {
+            Add-ColaAutomatizacion -Actuador $Actuador -Motivo (Get-MotivoEncendidoAutomatico -Actuador $Actuador) -Detalle $Descripcion | Out-Null
+        } else {
+            $script:DecisionesAutomaticas += "$Descripcion (bloqueado por control usuario)"
+        }
+        return
+    }
+
+    if ($controlActual -eq "automatizacion" -and $EstadoNuevo -eq 1) {
+        $script:DecisionesAutomaticas += "$Descripcion (automatizacion ya tiene control)"
+        return
+    }
+
+    if ($controlActual -eq "libre" -and $EstadoNuevo -eq 0 -and $estadoAnterior -eq 0) {
         $script:DecisionesAutomaticas += "$Descripcion (sin cambio)"
         return
     }
 
     Set-EstadoActuadorLocal -Actuador $Actuador -Estado $EstadoNuevo
+    Set-ControlActuadorLocal -Actuador $Actuador -Control $(if ($EstadoNuevo -eq 1) { "automatizacion" } else { "libre" })
+    $motivoEvento = if ($EstadoNuevo -eq 1) { "control_tomado_automatizacion" } else { "control_liberado_automatizacion" }
     Register-EventoActuador -Actuador $Actuador -EstadoAnterior $estadoAnterior -EstadoNuevo $EstadoNuevo -Motivo $Motivo
+    Register-EventoActuador -Actuador $Actuador -EstadoAnterior $estadoAnterior -EstadoNuevo $EstadoNuevo -Motivo $motivoEvento
     $script:DecisionesAutomaticas += "$Descripcion (cambio $estadoAnterior -> $EstadoNuevo)"
+}
+
+function Invoke-AtenderColaActuador {
+    param([string]$Actuador)
+
+    $pendientes = @(Get-ColaAutomatizacionPendiente | Where-Object { $_.actuador -eq $Actuador })
+
+    foreach ($tarea in @($pendientes)) {
+        if (Test-CondicionAutomaticaActiva -Actuador $Actuador) {
+            $estadoAnterior = Get-EstadoActuadorLocal -Actuador $Actuador
+            Set-EstadoActuadorLocal -Actuador $Actuador -Estado 1
+            Set-ControlActuadorLocal -Actuador $Actuador -Control "automatizacion"
+            Register-EventoActuador -Actuador $Actuador -EstadoAnterior $estadoAnterior -EstadoNuevo 1 -Motivo ([string]$tarea.motivo)
+            Register-EventoActuador -Actuador $Actuador -EstadoAnterior $estadoAnterior -EstadoNuevo 1 -Motivo "control_tomado_automatizacion"
+            Set-ColaAutomatizacionEstado -Id ([int]$tarea.id) -EstadoTarea "ejecutada" -Detalle "Ejecutada al liberar control usuario"
+            $script:DecisionesAutomaticas += "cola ejecutada para $Actuador"
+        } else {
+            Register-EventoActuador -Actuador $Actuador -EstadoAnterior (Get-EstadoActuadorLocal -Actuador $Actuador) -EstadoNuevo (Get-EstadoActuadorLocal -Actuador $Actuador) -Motivo "automatizacion_cancelada"
+            Set-ColaAutomatizacionEstado -Id ([int]$tarea.id) -EstadoTarea "cancelada" -Detalle "Condicion automatica ya no aplica"
+            $script:DecisionesAutomaticas += "automatizacion cancelada porque ya no aplica para $Actuador"
+        }
+    }
 }
 
 function Invoke-Automatizacion {
@@ -340,10 +525,36 @@ function Invoke-ProcesarComandosPendientes {
         }
 
         $estadoAnterior = Get-EstadoActuadorLocal -Actuador $actuador
+        $controlActual = Get-ControlActuadorLocal -Actuador $actuador
+
+        if ($controlActual -eq "automatizacion") {
+            Set-ComandoEstado -Id $id -EstadoComando "fallido" -Respuesta "Actuador bajo control de automatizacion"
+            $fallidos++
+            continue
+        }
+
+        if ($estadoSolicitado -eq 1 -and !($controlActual -eq "libre" -and $estadoAnterior -eq 0)) {
+            Set-ComandoEstado -Id $id -EstadoComando "fallido" -Respuesta "El actuador no esta libre y apagado"
+            $fallidos++
+            continue
+        }
+
+        if ($estadoSolicitado -eq 0 -and !($controlActual -eq "usuario" -and $estadoAnterior -eq 1)) {
+            Set-ComandoEstado -Id $id -EstadoComando "fallido" -Respuesta "El actuador no esta bajo control usuario"
+            $fallidos++
+            continue
+        }
+
         Set-EstadoActuadorLocal -Actuador $actuador -Estado $estadoSolicitado
+        Set-ControlActuadorLocal -Actuador $actuador -Control $(if ($estadoSolicitado -eq 1) { "usuario" } else { "libre" })
         Send-EstadoActuadores
         Register-EventoActuador -Actuador $actuador -EstadoAnterior $estadoAnterior -EstadoNuevo $estadoSolicitado -Motivo "comando_manual"
+        Register-EventoActuador -Actuador $actuador -EstadoAnterior $estadoAnterior -EstadoNuevo $estadoSolicitado -Motivo $(if ($estadoSolicitado -eq 1) { "control_tomado_usuario" } else { "control_liberado_usuario" })
         Set-ComandoEstado -Id $id -EstadoComando "ejecutado" -Respuesta "Comando ejecutado por ESP32 simulado"
+        if ($estadoSolicitado -eq 0) {
+            Invoke-AtenderColaActuador -Actuador $actuador
+            Send-EstadoActuadores
+        }
         $ejecutados++
     }
 
@@ -359,6 +570,7 @@ function Get-ComandosPendientesProcesables {
 }
 
 function Invoke-CicloAutomatizacion {
+    Sync-EstadoActuadoresDesdeApi
     $configuracion = Get-ConfiguracionAutomatizacion
     Write-Host ("Configuracion aplicada: temp_max={0} C, humedad_min={1} %, luz_min={2} lux, ventilacion={3}, riego={4}, iluminacion={5}, duracion_riego={6} s" -f `
         $configuracion.temperatura_max_c,
@@ -431,6 +643,9 @@ $script:EstadoVentilador = 0
 $script:EstadoBomba = 0
 $script:EstadoLampara = 0
 $script:EstadoServoAcceso = 0
+$script:ControlVentilador = "libre"
+$script:ControlBomba = "libre"
+$script:ControlLampara = "libre"
 $script:ComandosPendientes = @()
 $script:TotalEjecutados = 0
 $script:TotalFallidos = 0

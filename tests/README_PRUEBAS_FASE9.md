@@ -41,12 +41,12 @@ La prueba reconstruye la base con Docker Compose para iniciar desde un estado co
   - luz suficiente apaga lampara
 - El simulador registra eventos automaticos en `/api/eventos.php`.
 - El simulador procesa comandos pendientes desde `/api/comandos.php?estado=pendiente&limite=50`.
-- Los comandos manuales tienen prioridad al final del ciclo.
+- Desde Fase 11, usuario y automatizacion respetan turnos por actuador.
 - `servo_acceso` no se controla por comandos manuales.
 - El firmware base contiene la estructura equivalente.
 - `config.example.h` usa placeholders y `config.h` sigue ignorado por Git.
 - La documentacion contiene mapa de pines sugerido y advertencias electricas.
-- No hay cambios en `api/`, `sql/`, `Dockerfile` ni `docker-compose.yml`.
+- No hay cambios en `Dockerfile` ni `docker-compose.yml`.
 
 ## Automatizacion probada
 
@@ -69,7 +69,7 @@ bomba = 1
 lampara = 1
 ```
 
-Luego crea un comando manual para apagar la bomba y vuelve a ejecutar el simulador. Como los comandos manuales se procesan despues de la automatizacion, la bomba debe quedar apagada y el comando debe marcarse como `ejecutado`.
+Luego intenta crear un comando manual para apagar una bomba bajo automatizacion. La API debe bloquearlo porque el usuario no interrumpe automatizacion activa.
 
 ## Alcance del firmware
 

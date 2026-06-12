@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS estados_actuadores (
     bomba TINYINT(1) NOT NULL DEFAULT 0,
     lampara TINYINT(1) NOT NULL DEFAULT 0,
     servo_acceso TINYINT(1) NOT NULL DEFAULT 0,
+    control_ventilador ENUM('libre', 'usuario', 'automatizacion') NOT NULL DEFAULT 'libre',
+    control_bomba ENUM('libre', 'usuario', 'automatizacion') NOT NULL DEFAULT 'libre',
+    control_lampara ENUM('libre', 'usuario', 'automatizacion') NOT NULL DEFAULT 'libre',
     modo_control ENUM('automatico', 'manual') NOT NULL DEFAULT 'automatico',
     origen ENUM('esp32', 'web', 'app', 'sistema') NOT NULL DEFAULT 'esp32',
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -56,6 +59,21 @@ CREATE TABLE IF NOT EXISTS estados_actuadores (
     CHECK (bomba IN (0,1)),
     CHECK (lampara IN (0,1)),
     CHECK (servo_acceso IN (0,1))
+);
+
+CREATE TABLE IF NOT EXISTS cola_automatizacion (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    actuador ENUM('ventilador', 'bomba', 'lampara') NOT NULL,
+    accion ENUM('encender') NOT NULL DEFAULT 'encender',
+    motivo ENUM('temperatura_alta', 'suelo_seco', 'luz_baja') NOT NULL,
+    lectura_id INT NULL,
+    estado_tarea ENUM('pendiente', 'ejecutada', 'cancelada') NOT NULL DEFAULT 'pendiente',
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_cierre TIMESTAMP NULL,
+    detalle VARCHAR(255) NULL,
+
+    FOREIGN KEY (lectura_id) REFERENCES lecturas(id) ON DELETE SET NULL,
+    INDEX idx_cola_actuador_estado (actuador, estado_tarea)
 );
 
 CREATE TABLE IF NOT EXISTS tarjetas_rfid (
@@ -97,6 +115,12 @@ CREATE TABLE IF NOT EXISTS eventos_actuadores (
         'rfid_autorizado',
         'rfid_rechazado',
         'comando_manual',
+        'control_tomado_usuario',
+        'control_liberado_usuario',
+        'control_tomado_automatizacion',
+        'control_liberado_automatizacion',
+        'automatizacion_en_cola',
+        'automatizacion_cancelada',
         'inicio_sistema',
         'desconocido'
     ) NOT NULL DEFAULT 'desconocido',
@@ -157,6 +181,33 @@ SELECT
     10
 WHERE NOT EXISTS (
     SELECT 1 FROM configuracion_automatizacion
+);
+
+INSERT INTO estados_actuadores (
+    lectura_id,
+    ventilador,
+    bomba,
+    lampara,
+    servo_acceso,
+    control_ventilador,
+    control_bomba,
+    control_lampara,
+    modo_control,
+    origen
+)
+SELECT
+    NULL,
+    0,
+    0,
+    0,
+    0,
+    'libre',
+    'libre',
+    'libre',
+    'automatico',
+    'sistema'
+WHERE NOT EXISTS (
+    SELECT 1 FROM estados_actuadores
 );
 
 INSERT INTO tarjetas_rfid (uid, nombre_usuario, activa)

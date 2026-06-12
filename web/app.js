@@ -10,6 +10,16 @@ const comandosPendientesActuales = {
     bomba: false,
     lampara: false,
 };
+const controlActuadoresActual = {
+    ventilador: "libre",
+    bomba: "libre",
+    lampara: "libre",
+};
+const colaAutomatizacionActual = {
+    ventilador: false,
+    bomba: false,
+    lampara: false,
+};
 let configuracionActual = null;
 
 const $ = (id) => document.getElementById(id);
@@ -189,17 +199,31 @@ async function cargarUltimaLectura() {
     }
 }
 
-function actualizarCardActuador(actuador, estado, pendiente) {
+function textoEstadoTurno(estado, control) {
+    if (Number(estado) === 1 && control === "usuario") {
+        return "Encendido · Control usuario";
+    }
+
+    if (Number(estado) === 1 && control === "automatizacion") {
+        return "Encendido · Control automatizacion";
+    }
+
+    return "Apagado · Libre";
+}
+
+function actualizarCardActuador(actuador, estado, pendiente, control = "libre", colaAutomatizacion = false) {
     const card = document.querySelector(`.control-actuador[data-actuador="${actuador}"]`);
     const accion = $(`accion-${actuador}`);
+    const etiqueta = $(`act-${actuador}`);
 
-    if (!card || !accion) {
+    if (!card || !accion || !etiqueta) {
         return;
     }
 
-    card.classList.remove("actuador-on", "actuador-off", "actuador-pendiente", "actuador-desconocido");
+    card.classList.remove("actuador-on", "actuador-off", "actuador-pendiente", "actuador-desconocido", "actuador-bloqueado");
 
     if (estado === null || estado === undefined) {
+        etiqueta.textContent = "Sin datos";
         accion.textContent = "Esperando estado";
         card.classList.add("actuador-desconocido");
         card.setAttribute("aria-disabled", "true");
@@ -207,21 +231,33 @@ function actualizarCardActuador(actuador, estado, pendiente) {
     }
 
     if (pendiente) {
+        etiqueta.textContent = textoEstadoTurno(estado, control);
         accion.textContent = "Esperando ejecucion";
         card.classList.add("actuador-pendiente");
         card.setAttribute("aria-disabled", "true");
         return;
     }
 
-    accion.textContent = Number(estado) === 1 ? "Toca para apagar" : "Toca para encender";
+    etiqueta.textContent = textoEstadoTurno(estado, control);
+    accion.textContent = colaAutomatizacion
+        ? "Automatizacion en espera"
+        : (Number(estado) === 1 ? "Toca para apagar/liberar" : "Toca para encender");
     card.classList.add(Number(estado) === 1 ? "actuador-on" : "actuador-off");
-    card.setAttribute("aria-disabled", "false");
+
+    if (control === "automatizacion") {
+        card.classList.add("actuador-bloqueado");
+        card.setAttribute("aria-disabled", "true");
+        return;
+    }
+
+    card.setAttribute("aria-disabled", control === "libre" || control === "usuario" ? "false" : "true");
 }
 
 async function cargarEstadoActuadores() {
     try {
         const datos = await obtenerJson("/actuadores.php");
         const estado = datos.estado;
+        const cola = Array.isArray(datos.cola_automatizacion) ? datos.cola_automatizacion : [];
 
         if (!estado) {
             ["act-ventilador", "act-bomba", "act-lampara", "act-servo"].forEach((id) => {
@@ -229,6 +265,8 @@ async function cargarEstadoActuadores() {
             });
             ["ventilador", "bomba", "lampara"].forEach((actuador) => {
                 estadoActuadoresActual[actuador] = null;
+                controlActuadoresActual[actuador] = "libre";
+                colaAutomatizacionActual[actuador] = false;
                 actualizarCardActuador(actuador, null, comandosPendientesActuales[actuador]);
             });
             return;
@@ -237,12 +275,24 @@ async function cargarEstadoActuadores() {
         estadoActuadoresActual.ventilador = estado.ventilador;
         estadoActuadoresActual.bomba = estado.bomba;
         estadoActuadoresActual.lampara = estado.lampara;
-        setEtiqueta("act-ventilador", formatearBinario(estado.ventilador), claseBinaria(estado.ventilador));
-        setEtiqueta("act-bomba", formatearBinario(estado.bomba, "Encendida", "Apagada"), claseBinaria(estado.bomba));
-        setEtiqueta("act-lampara", formatearBinario(estado.lampara, "Encendida", "Apagada"), claseBinaria(estado.lampara));
+        controlActuadoresActual.ventilador = estado.control_ventilador || "libre";
+        controlActuadoresActual.bomba = estado.control_bomba || "libre";
+        controlActuadoresActual.lampara = estado.control_lampara || "libre";
+        ["ventilador", "bomba", "lampara"].forEach((actuador) => {
+            colaAutomatizacionActual[actuador] = cola.some((tarea) => tarea.actuador === actuador);
+        });
+        setEtiqueta("act-ventilador", textoEstadoTurno(estado.ventilador, controlActuadoresActual.ventilador), claseBinaria(estado.ventilador));
+        setEtiqueta("act-bomba", textoEstadoTurno(estado.bomba, controlActuadoresActual.bomba), claseBinaria(estado.bomba));
+        setEtiqueta("act-lampara", textoEstadoTurno(estado.lampara, controlActuadoresActual.lampara), claseBinaria(estado.lampara));
         setEtiqueta("act-servo", formatearBinario(estado.servo_acceso, "Abierto", "Cerrado"), claseBinaria(estado.servo_acceso));
         ["ventilador", "bomba", "lampara"].forEach((actuador) => {
-            actualizarCardActuador(actuador, estadoActuadoresActual[actuador], comandosPendientesActuales[actuador]);
+            actualizarCardActuador(
+                actuador,
+                estadoActuadoresActual[actuador],
+                comandosPendientesActuales[actuador],
+                controlActuadoresActual[actuador],
+                colaAutomatizacionActual[actuador],
+            );
         });
     } catch (error) {
         mostrarError(`Estado de actuadores: ${error.message}`);
@@ -257,7 +307,13 @@ async function cargarComandosPendientes() {
 
         ["ventilador", "bomba", "lampara"].forEach((actuador) => {
             comandosPendientesActuales[actuador] = procesables.some((comando) => comando.actuador === actuador);
-            actualizarCardActuador(actuador, estadoActuadoresActual[actuador], comandosPendientesActuales[actuador]);
+            actualizarCardActuador(
+                actuador,
+                estadoActuadoresActual[actuador],
+                comandosPendientesActuales[actuador],
+                controlActuadoresActual[actuador],
+                colaAutomatizacionActual[actuador],
+            );
         });
 
         $("comandos-pendientes").textContent = procesables.length === 0
@@ -295,6 +351,11 @@ async function crearComandoDesdeCard(actuador) {
     const estadoActual = estadoActuadoresActual[actuador];
 
     if (estadoActual === null || estadoActual === undefined || comandosPendientesActuales[actuador]) {
+        return;
+    }
+
+    if (controlActuadoresActual[actuador] === "automatizacion") {
+        mostrarError(`${actuador}: control de automatizacion activo.`);
         return;
     }
 

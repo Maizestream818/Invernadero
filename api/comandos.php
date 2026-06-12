@@ -65,6 +65,35 @@ try {
         $actuador = validar_enum($datos['actuador'], ['ventilador', 'bomba', 'lampara'], 'actuador');
         $estadoSolicitado = obtener_binario($datos, 'estado_solicitado');
         $origen = validar_enum($datos['origen'], ['web', 'app'], 'origen');
+        $estadoActual = obtener_ultimo_estado_actuadores($pdo);
+
+        if ($estadoActual === null) {
+            responder_error_json('No hay estado de actuadores disponible', 409);
+        }
+
+        $campoControl = 'control_' . $actuador;
+        $controlActual = (string) ($estadoActual[$campoControl] ?? 'libre');
+        $valorActual = (int) ($estadoActual[$actuador] ?? 0);
+
+        if ($controlActual === 'automatizacion') {
+            responder_error_json('Actuador bajo control de automatizacion', 409, [
+                'control_actual' => $controlActual,
+            ]);
+        }
+
+        if ($estadoSolicitado === 1 && !($controlActual === 'libre' && $valorActual === 0)) {
+            responder_error_json('El usuario solo puede encender un actuador libre y apagado', 409, [
+                'control_actual' => $controlActual,
+                'estado_actual' => $valorActual,
+            ]);
+        }
+
+        if ($estadoSolicitado === 0 && !($controlActual === 'usuario' && $valorActual === 1)) {
+            responder_error_json('El usuario solo puede apagar un actuador bajo control usuario', 409, [
+                'control_actual' => $controlActual,
+                'estado_actual' => $valorActual,
+            ]);
+        }
 
         $consulta = $pdo->prepare(
             'INSERT INTO comandos_actuadores (actuador, estado_solicitado, origen)

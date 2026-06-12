@@ -365,6 +365,11 @@ button:focus {
     background: var(--color-warning-soft);
 }
 
+.actuador-bloqueado {
+    cursor: not-allowed;
+    filter: saturate(0.85);
+}
+
 .metrica strong {
     color: var(--color-primary);
     font-size: 1.68rem;

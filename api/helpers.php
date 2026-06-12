@@ -212,6 +212,7 @@ function recurso_existe(PDO $pdo, string $tabla, int $id): bool
         'lecturas',
         'accesos_rfid',
         'comandos_actuadores',
+        'cola_automatizacion',
     ];
 
     if (!in_array($tabla, $tablasPermitidas, true)) {
@@ -223,6 +224,50 @@ function recurso_existe(PDO $pdo, string $tabla, int $id): bool
     $consulta->execute();
 
     return $consulta->fetchColumn() !== false;
+}
+
+function obtener_ultimo_estado_actuadores(PDO $pdo): ?array
+{
+    $consulta = $pdo->query(
+        'SELECT id, lectura_id, ventilador, bomba, lampara, servo_acceso,
+                control_ventilador, control_bomba, control_lampara,
+                modo_control, origen, fecha
+         FROM estados_actuadores
+         ORDER BY fecha DESC, id DESC
+         LIMIT 1'
+    );
+
+    $estado = $consulta !== false ? $consulta->fetch() : false;
+
+    return convertir_fila_enteros($estado ?: null, [
+        'id',
+        'lectura_id',
+        'ventilador',
+        'bomba',
+        'lampara',
+        'servo_acceso',
+    ]);
+}
+
+function obtener_cola_automatizacion(PDO $pdo, string $estadoTarea = 'pendiente'): array
+{
+    $consulta = $pdo->prepare(
+        'SELECT id, actuador, accion, motivo, lectura_id, estado_tarea,
+                fecha_creacion, fecha_cierre, detalle
+         FROM cola_automatizacion
+         WHERE estado_tarea = :estado_tarea
+         ORDER BY fecha_creacion ASC, id ASC'
+    );
+    $consulta->bindValue(':estado_tarea', $estadoTarea);
+    $consulta->execute();
+
+    return array_map(
+        static fn (array $fila): array => convertir_fila_enteros($fila, [
+            'id',
+            'lectura_id',
+        ]),
+        $consulta->fetchAll()
+    );
 }
 
 function convertir_fila_enteros(?array $fila, array $campos): ?array

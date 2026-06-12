@@ -457,9 +457,9 @@ Invoke-Check "simular_esp32.ps1 procesa todos los pendientes" {
     Assert-FileContains -Path $simulador -Text "No quedan comandos pendientes procesables"
 }
 
-Invoke-Check "No se modificaron api/, sql/, Dockerfile ni docker-compose.yml" {
-    $diffTracked = git diff --name-only -- api sql Dockerfile docker-compose.yml
-    $diffUntracked = git ls-files --others --exclude-standard api sql Dockerfile docker-compose.yml
+Invoke-Check "No se modificaron Dockerfile ni docker-compose.yml" {
+    $diffTracked = git diff --name-only -- Dockerfile docker-compose.yml
+    $diffUntracked = git ls-files --others --exclude-standard Dockerfile docker-compose.yml
 
     if ($diffTracked -or $diffUntracked) {
         throw "Hay cambios fuera del alcance: $diffTracked $diffUntracked"
@@ -477,6 +477,24 @@ Invoke-Check "Servicios levantados con Docker Compose" {
 
 Invoke-Check "API status responde" {
     Wait-ForApiStatus
+}
+
+Invoke-Check "Actuadores restablecidos para pruebas de comandos" {
+    $json = Invoke-ApiJson -Method "POST" -Path "/api/actuadores.php" -ExpectedStatus 201 -Body @{
+        ventilador = 0
+        bomba = 0
+        lampara = 0
+        servo_acceso = 0
+        control_ventilador = "libre"
+        control_bomba = "libre"
+        control_lampara = "libre"
+        modo_control = "automatico"
+        origen = "sistema"
+    }
+
+    if ($json.ok -ne $true) {
+        throw "No se pudo restablecer actuadores."
+    }
 }
 
 Invoke-Check "API permite crear comandos de bomba" {
