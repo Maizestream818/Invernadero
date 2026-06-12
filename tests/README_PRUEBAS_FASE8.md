@@ -14,11 +14,12 @@ El simulador:
 - Envia una lectura a `/lecturas.php`.
 - Envia estado de actuadores a `/actuadores.php`.
 - Registra un acceso RFID demo en `/accesos.php`.
-- Crea un comando pendiente para simular una peticion de la app.
-- Consulta comandos pendientes en `/comandos.php?estado=pendiente&limite=1`.
-- Ejecuta el comando pendiente de forma simulada.
+- Solo crea un comando pendiente si se ejecuta con `-CrearComandoPrueba`.
+- Consulta comandos pendientes en `/comandos.php?estado=pendiente&limite=50`.
+- Ejecuta todos los comandos pendientes procesables de forma simulada.
 - Registra un evento en `/eventos.php`.
-- Marca el comando como `ejecutado`.
+- Marca los comandos procesados como `ejecutado`.
+- Verifica que no queden comandos pendientes procesables para `bomba`, `ventilador` o `lampara`.
 
 ## Advertencia importante
 
@@ -72,6 +73,28 @@ Con Docker levantado:
 powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1
 ```
 
+Este comando procesa comandos pendientes existentes. No crea comandos nuevos.
+
+Para crear un comando de prueba y procesar todos los pendientes:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1 -CrearComandoPrueba
+```
+
+Para dejar el simulador corriendo mientras se prueba la app Android:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1 -ModoContinuo
+```
+
+En modo continuo, el simulador consulta cada 5 segundos:
+
+```text
+/api/comandos.php?estado=pendiente&limite=50
+```
+
+Cuando encuentra comandos pendientes de `bomba`, `ventilador` o `lampara`, actualiza `/api/actuadores.php`, registra el evento en `/api/eventos.php` y marca el comando como `ejecutado`. Se detiene con `Ctrl + C`.
+
 ## Ejecutar prueba limpia completa
 
 Desde la raiz del proyecto:
@@ -79,6 +102,8 @@ Desde la raiz del proyecto:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_esp32_simulado.ps1
 ```
+
+La prueba limpia usa `simular_esp32.ps1 -CrearComandoPrueba` para generar un comando inicial y validar que el simulador procesa todos los pendientes.
 
 ## Resultado esperado
 

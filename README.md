@@ -2,9 +2,9 @@
 
 ## Descripcion
 
-Proyecto academico para un invernadero inteligente IoT. La version actual incluye base de datos MySQL, API REST en PHP puro, phpMyAdmin, panel web de monitoreo, app Android, simulador ESP32 y documentacion para acceso externo con ngrok.
+Proyecto academico para un invernadero inteligente IoT. La version actual incluye base de datos MySQL, API REST en PHP puro, phpMyAdmin, panel web, app Android, simulador ESP32 con automatizacion real y firmware base ESP32 preparado para Arduino IDE.
 
-El panel web consume datos reales desde la API y permite monitorear lecturas, actuadores, configuracion, accesos RFID, eventos y comandos recientes. El panel no controla actuadores.
+El panel web consume datos reales desde la API y permite monitorear lecturas, actuadores, configuracion, accesos RFID, eventos y comandos recientes. El control manual se realiza creando comandos pendientes mediante la API.
 
 ## Tecnologias
 
@@ -145,7 +145,11 @@ powershell -ExecutionPolicy Bypass -File .\tests\probar_fase5_app.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase6_diseno.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase7_control_app.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1 -ModoContinuo
+powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1 -CrearComandoPrueba
 powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_esp32_simulado.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_1_app_actualizacion.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase9_automatizacion.ps1
 ```
 
 ## Guias
@@ -279,6 +283,22 @@ Ejecutar simulador sin reiniciar base:
 powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1
 ```
 
+Este comando procesa comandos pendientes existentes. No crea comandos nuevos por defecto.
+
+Para crear un comando de prueba y luego procesar todos los comandos pendientes:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1 -CrearComandoPrueba
+```
+
+Para dejar el simulador procesando comandos mientras se prueba la app Android:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\simular_esp32.ps1 -ModoContinuo
+```
+
+El modo continuo consulta configuracion, genera lectura simulada, aplica automatizacion, procesa comandos pendientes cada 2 segundos, actualiza actuadores, registra eventos y marca los comandos como `ejecutado`. Se detiene con `Ctrl + C`.
+
 Ejecutar prueba limpia completa:
 
 ```powershell
@@ -287,8 +307,77 @@ powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_esp32_simulado.ps1
 
 `probar_fase8_esp32_simulado.ps1` ejecuta `docker compose down -v`, por lo tanto borra la base de datos persistida del volumen MySQL.
 
+## Fase 8.1: UX mejorada en app y tarjetas visuales en app/web
+
+Se aplicaron mejoras de experiencia de usuario en la app Android y en el panel web.
+
+Cambios:
+
+- Se elimino el boton `Guardar URL`.
+- La URL base de API se guarda automaticamente al perder foco, probar conexion o actualizar datos.
+- Bomba, ventilador y lampara ahora se controlan desde un unico boton dinamico por actuador.
+- Si un actuador esta apagado, su boton permite encenderlo.
+- Si un actuador esta encendido, su boton permite apagarlo.
+- Si el estado es desconocido o hay comando pendiente, se bloquea solo el actuador afectado.
+- Los botones bloqueados siguen visibles con texto oscuro, borde de advertencia y mensajes `ESPERANDO ESTADO` o `ESPERANDO EJECUCION`.
+- El mensaje general de control remoto muestra `Sin comandos pendientes` cuando no hay pendientes y `Comandos pendientes detectados` o `Esperando ejecucion de comandos` cuando corresponde.
+- El estado superior de API es estable y solo muestra `API conectada` o `API desconectada`.
+- La app se actualiza automaticamente cada 5 segundos sin banners que muevan la interfaz.
+- El boton `Actualizar datos` sigue funcionando.
+- Sensores y actuadores ahora se muestran en tarjetas individuales con icono y valor.
+- El mismo concepto visual se aplica en app y web.
+- El simulador ESP32 procesa todos los comandos pendientes consultando `/api/comandos.php?estado=pendiente&limite=50` y solo crea un comando de prueba cuando se ejecuta con `-CrearComandoPrueba`.
+
+No se modificaron endpoints ni base de datos.
+
+Prueba de Fase 8.1:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase8_1_app_actualizacion.ps1
+```
+
+## Fase 9: Automatizacion real en simulador y firmware ESP32 base
+
+El simulador ESP32 ahora consulta `GET /api/configuracion.php` y aplica reglas automaticas antes de procesar comandos manuales.
+
+Reglas implementadas:
+
+- Si `temperatura_c > temperatura_max_c` y `ventilacion_automatica = 1`, enciende ventilador.
+- Si `temperatura_c <= temperatura_max_c` y `ventilacion_automatica = 1`, apaga ventilador.
+- Si `humedad_suelo_pct < humedad_suelo_min_pct` y `riego_automatico = 1`, enciende bomba.
+- Si `humedad_suelo_pct >= humedad_suelo_min_pct` y `riego_automatico = 1`, apaga bomba.
+- Si `intensidad_luz_lux < luz_min_lux` y `iluminacion_automatica = 1`, enciende lampara.
+- Si `intensidad_luz_lux >= luz_min_lux` y `iluminacion_automatica = 1`, apaga lampara.
+
+Si una automatizacion esta desactivada, ese actuador no se cambia automaticamente. Los comandos manuales de app/web se procesan despues de la automatizacion, por lo que tienen prioridad al final del ciclo. `servo_acceso` no se controla por comandos manuales.
+
+El firmware base en `esp32/firmware_base/firmware_base.ino` queda preparado para:
+
+- conectar WiFi
+- consultar configuracion
+- leer DHT11, YL-69, BH1750 y RFID RC522
+- enviar lecturas
+- aplicar automatizacion
+- actualizar actuadores
+- procesar comandos pendientes
+- registrar eventos y accesos RFID
+
+El intervalo queda fijo en 2 segundos para demo. No se usa `intervalo_lectura_seg` porque esa configuracion se oculto en la interfaz.
+
+La guia completa del ESP32 esta en:
+
+```text
+esp32/README_INTEGRACION_ESP32.md
+```
+
+Prueba de Fase 9:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\probar_fase9_automatizacion.ps1
+```
+
 ## Nota de alcance
 
-El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin, panel web de monitoreo, app Android con monitoreo/control por comandos pendientes y simulador ESP32. El codigo ESP32 real con pines finales se implementara despues.
+El proyecto actual incluye backend, base de datos, API REST, phpMyAdmin, panel web, app Android con monitoreo/control por comandos pendientes, simulador ESP32 con automatizacion y firmware base ESP32. Los pines documentados son sugeridos y deben confirmarse con el cableado fisico final.
 
 No se implementan login, roles, frameworks, MQTT, WebSockets, control manual desde web ni nuevas tablas en esta etapa.

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cardActVentilador"
+    style="@style/CardContainer"
+    android:layout_width="0dp"
+    android:layout_height="150dp"
+    android:layout_marginEnd="5dp"
+    android:layout_weight="1"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical">
+
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="&#128168;" android:textSize="24sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ventilador" android:textColor="@color/color_muted" />
+    <TextView android:id="@+id/txtActVentilador" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Esperando estado" android:textColor="@color/color_text" android:textSize="20sp" android:textStyle="bold" />
+    <TextView android:id="@+id/txtEstadoVentiladorControl" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Esperando estado" android:textColor="@color/color_muted" />
+</LinearLayout>

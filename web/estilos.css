@@ -18,6 +18,7 @@
     --radius-md: 12px;
     --shadow-card: 0 12px 28px rgba(15, 81, 50, 0.10);
     --shadow-header: 0 18px 45px rgba(15, 81, 50, 0.18);
+    --tile-size: 150px;
 }
 
 * {
@@ -152,8 +153,12 @@ button:focus {
     gap: 14px;
 }
 
+.grid-sensores,
+.grid-actuadores {
+    grid-template-columns: repeat(auto-fit, minmax(var(--tile-size), var(--tile-size)));
+}
+
 .tarjeta {
-    min-height: 104px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: linear-gradient(180deg, var(--color-card), var(--color-card-soft));
@@ -161,11 +166,88 @@ button:focus {
     padding: 16px;
 }
 
+.visual-card {
+    position: relative;
+    overflow: hidden;
+    padding-top: 18px;
+}
+
+.visual-card::after {
+    position: absolute;
+    right: -22px;
+    bottom: -24px;
+    width: 86px;
+    height: 86px;
+    border-radius: 999px;
+    background: rgba(25, 135, 84, 0.08);
+    content: "";
+}
+
+.icono-tarjeta {
+    display: inline-grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    margin-bottom: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-card-soft);
+    color: var(--color-primary);
+    font-size: 1.35rem;
+    font-weight: 800;
+}
+
 .tarjeta span {
     display: block;
     margin-bottom: 8px;
     color: var(--color-muted);
     font-size: 0.9rem;
+}
+
+.tarjeta .icono-tarjeta {
+    color: var(--color-primary);
+    font-size: 1.35rem;
+}
+
+.actuator-card {
+    aspect-ratio: 1 / 1;
+    padding: 14px;
+    width: var(--tile-size);
+}
+
+.sensor-card {
+    aspect-ratio: 1 / 1;
+    padding: 14px;
+    width: var(--tile-size);
+}
+
+.actuator-card.visual-card,
+.sensor-card.visual-card {
+    padding-top: 14px;
+}
+
+.actuator-card .icono-tarjeta,
+.sensor-card .icono-tarjeta {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    font-size: 1.08rem;
+}
+
+.actuator-card span,
+.sensor-card span {
+    margin-bottom: 4px;
+}
+
+.actuator-card strong,
+.sensor-card strong {
+    font-size: 1.35rem;
+}
+
+.actuator-card small {
+    display: block;
+    margin-top: 8px;
 }
 
 .tarjeta strong {
@@ -184,8 +266,103 @@ button:focus {
     gap: 12px;
 }
 
+.editable-card {
+    cursor: pointer;
+}
+
+.editable-card:focus,
+.editable-card:hover {
+    border-color: var(--color-secondary);
+    outline: 3px solid rgba(25, 135, 84, 0.18);
+}
+
+.modal-config {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    background: rgba(15, 81, 50, 0.36);
+    padding: 18px;
+}
+
+.modal-config-panel {
+    width: min(360px, 100%);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-card);
+    box-shadow: var(--shadow-header);
+    padding: 18px;
+}
+
+.modal-config-panel h3 {
+    margin: 0 0 12px;
+    color: var(--color-primary);
+}
+
+.modal-config-panel select {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-card-soft);
+    color: var(--color-text);
+    font: inherit;
+    padding: 11px 12px;
+}
+
+.modal-config-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+}
+
 .metrica {
     border-left: 5px solid var(--color-secondary);
+}
+
+.control-actuador {
+    cursor: pointer;
+    transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.control-actuador:hover,
+.control-actuador:focus {
+    border-color: var(--color-secondary);
+    outline: 3px solid rgba(25, 135, 84, 0.18);
+    transform: translateY(-1px);
+}
+
+.control-actuador[aria-disabled="true"] {
+    cursor: not-allowed;
+}
+
+.actuador-on {
+    border-color: var(--color-primary);
+    background: linear-gradient(180deg, var(--color-primary), #0B3D25);
+}
+
+.actuador-on span,
+.actuador-on strong,
+.actuador-on small,
+.actuador-on .icono-tarjeta {
+    color: var(--color-card);
+}
+
+.actuador-on .icono-tarjeta {
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.actuador-off {
+    border-color: var(--color-border);
+    background: linear-gradient(180deg, var(--color-card), var(--color-success-soft));
+}
+
+.actuador-pendiente,
+.actuador-desconocido {
+    border-color: var(--color-warning);
+    background: var(--color-warning-soft);
 }
 
 .metrica strong {
@@ -310,5 +487,9 @@ td {
 
     .contenedor {
         padding-top: 18px;
+    }
+
+    :root {
+        --tile-size: min(150px, 100%);
     }
 }

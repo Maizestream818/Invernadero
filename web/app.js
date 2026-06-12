@@ -1,5 +1,16 @@
 const API_BASE_URL = "/api";
-const INTERVALO_ACTUALIZACION_MS = 5000;
+const INTERVALO_ACTUALIZACION_MS = 2000;
+const estadoActuadoresActual = {
+    ventilador: null,
+    bomba: null,
+    lampara: null,
+};
+const comandosPendientesActuales = {
+    ventilador: false,
+    bomba: false,
+    lampara: false,
+};
+let configuracionActual = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,6 +28,25 @@ async function obtenerJson(endpoint) {
     } catch (error) {
         throw new Error(`Respuesta no valida de ${endpoint}`);
     }
+
+    if (!respuesta.ok || datos.ok === false) {
+        throw new Error(datos.mensaje || `Error HTTP ${respuesta.status} en ${endpoint}`);
+    }
+
+    return datos;
+}
+
+async function enviarJson(endpoint, metodo, body) {
+    const respuesta = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: metodo,
+        headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+
+    const datos = await respuesta.json();
 
     if (!respuesta.ok || datos.ok === false) {
         throw new Error(datos.mensaje || `Error HTTP ${respuesta.status} en ${endpoint}`);
@@ -120,6 +150,10 @@ function estadoComandoClase(estado) {
     return clases[estado] || "estado-info";
 }
 
+function esConfiguracionBooleana(campo) {
+    return ["ventilacion_automatica", "riego_automatico", "iluminacion_automatica"].includes(campo);
+}
+
 async function cargarEstadoApi() {
     try {
         const datos = await obtenerJson("/status.php");
@@ -140,7 +174,7 @@ async function cargarUltimaLectura() {
         const lectura = Array.isArray(datos.lecturas) ? datos.lecturas[0] : null;
 
         if (!lectura) {
-            ["lectura-temperatura", "lectura-humedad-ambiente", "lectura-humedad-suelo", "lectura-humedad-raw", "lectura-luz", "lectura-fecha"]
+            ["lectura-temperatura", "lectura-humedad-ambiente", "lectura-humedad-suelo", "lectura-humedad-raw", "lectura-luz"]
                 .forEach((id) => setTexto(id, "Sin datos"));
             return;
         }
@@ -150,10 +184,38 @@ async function cargarUltimaLectura() {
         setTexto("lectura-humedad-suelo", lectura.humedad_suelo_pct);
         setTexto("lectura-humedad-raw", lectura.humedad_suelo_raw);
         setTexto("lectura-luz", lectura.intensidad_luz_lux);
-        setTexto("lectura-fecha", formatearFecha(lectura.fecha));
     } catch (error) {
         mostrarError(`Ultima lectura: ${error.message}`);
     }
+}
+
+function actualizarCardActuador(actuador, estado, pendiente) {
+    const card = document.querySelector(`.control-actuador[data-actuador="${actuador}"]`);
+    const accion = $(`accion-${actuador}`);
+
+    if (!card || !accion) {
+        return;
+    }
+
+    card.classList.remove("actuador-on", "actuador-off", "actuador-pendiente", "actuador-desconocido");
+
+    if (estado === null || estado === undefined) {
+        accion.textContent = "Esperando estado";
+        card.classList.add("actuador-desconocido");
+        card.setAttribute("aria-disabled", "true");
+        return;
+    }
+
+    if (pendiente) {
+        accion.textContent = "Esperando ejecucion";
+        card.classList.add("actuador-pendiente");
+        card.setAttribute("aria-disabled", "true");
+        return;
+    }
+
+    accion.textContent = Number(estado) === 1 ? "Toca para apagar" : "Toca para encender";
+    card.classList.add(Number(estado) === 1 ? "actuador-on" : "actuador-off");
+    card.setAttribute("aria-disabled", "false");
 }
 
 async function cargarEstadoActuadores() {
@@ -165,21 +227,44 @@ async function cargarEstadoActuadores() {
             ["act-ventilador", "act-bomba", "act-lampara", "act-servo"].forEach((id) => {
                 setEtiqueta(id, "Sin datos", "estado-neutro");
             });
-            setTexto("act-modo", "Sin datos");
-            setTexto("act-origen", "Sin datos");
-            setTexto("act-fecha", "Sin datos");
+            ["ventilador", "bomba", "lampara"].forEach((actuador) => {
+                estadoActuadoresActual[actuador] = null;
+                actualizarCardActuador(actuador, null, comandosPendientesActuales[actuador]);
+            });
             return;
         }
 
+        estadoActuadoresActual.ventilador = estado.ventilador;
+        estadoActuadoresActual.bomba = estado.bomba;
+        estadoActuadoresActual.lampara = estado.lampara;
         setEtiqueta("act-ventilador", formatearBinario(estado.ventilador), claseBinaria(estado.ventilador));
         setEtiqueta("act-bomba", formatearBinario(estado.bomba, "Encendida", "Apagada"), claseBinaria(estado.bomba));
         setEtiqueta("act-lampara", formatearBinario(estado.lampara, "Encendida", "Apagada"), claseBinaria(estado.lampara));
         setEtiqueta("act-servo", formatearBinario(estado.servo_acceso, "Abierto", "Cerrado"), claseBinaria(estado.servo_acceso));
-        setTexto("act-modo", estado.modo_control);
-        setTexto("act-origen", estado.origen);
-        setTexto("act-fecha", formatearFecha(estado.fecha));
+        ["ventilador", "bomba", "lampara"].forEach((actuador) => {
+            actualizarCardActuador(actuador, estadoActuadoresActual[actuador], comandosPendientesActuales[actuador]);
+        });
     } catch (error) {
         mostrarError(`Estado de actuadores: ${error.message}`);
+    }
+}
+
+async function cargarComandosPendientes() {
+    try {
+        const datos = await obtenerJson("/comandos.php?estado=pendiente&limite=50");
+        const comandos = Array.isArray(datos.comandos) ? datos.comandos : [];
+        const procesables = comandos.filter((comando) => ["ventilador", "bomba", "lampara"].includes(comando.actuador));
+
+        ["ventilador", "bomba", "lampara"].forEach((actuador) => {
+            comandosPendientesActuales[actuador] = procesables.some((comando) => comando.actuador === actuador);
+            actualizarCardActuador(actuador, estadoActuadoresActual[actuador], comandosPendientesActuales[actuador]);
+        });
+
+        $("comandos-pendientes").textContent = procesables.length === 0
+            ? "Sin comandos pendientes"
+            : `Comandos pendientes detectados: ${procesables.length}`;
+    } catch (error) {
+        mostrarError(`Comandos pendientes: ${error.message}`);
     }
 }
 
@@ -193,17 +278,121 @@ async function cargarConfiguracion() {
             return;
         }
 
+        configuracionActual = cfg;
         setTexto("cfg-temp-max", `${cfg.temperatura_max_c} \u00B0C`);
         setTexto("cfg-hum-suelo-min", `${cfg.humedad_suelo_min_pct} %`);
         setTexto("cfg-luz-min", `${cfg.luz_min_lux} lux`);
         setEtiqueta("cfg-ventilacion", formatearBinario(cfg.ventilacion_automatica, "Activa", "Inactiva"), claseBinaria(cfg.ventilacion_automatica));
-        setEtiqueta("cfg-riego", formatearBinario(cfg.riego_automatico, "Activo", "Inactivo"), claseBinaria(cfg.riego_automatico));
+        setEtiqueta("cfg-riego", formatearBinario(cfg.riego_automatico, "Activa", "Inactiva"), claseBinaria(cfg.riego_automatico));
         setEtiqueta("cfg-iluminacion", formatearBinario(cfg.iluminacion_automatica, "Activa", "Inactiva"), claseBinaria(cfg.iluminacion_automatica));
         setTexto("cfg-duracion-riego", `${cfg.duracion_riego_seg} s`);
-        setTexto("cfg-intervalo", `${cfg.intervalo_lectura_seg} s`);
     } catch (error) {
         mostrarError(`Configuracion: ${error.message}`);
     }
+}
+
+async function crearComandoDesdeCard(actuador) {
+    const estadoActual = estadoActuadoresActual[actuador];
+
+    if (estadoActual === null || estadoActual === undefined || comandosPendientesActuales[actuador]) {
+        return;
+    }
+
+    try {
+        await enviarJson("/comandos.php", "POST", {
+            actuador,
+            estado_solicitado: Number(estadoActual) === 1 ? 0 : 1,
+            origen: "web",
+        });
+        comandosPendientesActuales[actuador] = true;
+        actualizarCardActuador(actuador, estadoActual, true);
+        await cargarComandosPendientes();
+        await cargarTablaComandos();
+    } catch (error) {
+        mostrarError(`Comando ${actuador}: ${error.message}`);
+    }
+}
+
+async function editarConfiguracion(campo) {
+    if (!configuracionActual || !campo) {
+        return;
+    }
+
+    const valorNuevo = esConfiguracionBooleana(campo)
+        ? await seleccionarValorBooleanoConfiguracion(campo)
+        : window.prompt("Nuevo valor", texto(configuracionActual[campo], ""));
+
+    if (valorNuevo === null || String(valorNuevo).trim() === "") {
+        return;
+    }
+
+    try {
+        await enviarJson("/configuracion.php", "PUT", {
+            ...configuracionActual,
+            [campo]: String(valorNuevo).trim(),
+        });
+        await cargarConfiguracion();
+    } catch (error) {
+        mostrarError(`Configuracion: ${error.message}`);
+    }
+}
+
+function seleccionarValorBooleanoConfiguracion(campo) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.className = "modal-config";
+
+        const panel = document.createElement("div");
+        panel.className = "modal-config-panel";
+
+        const titulo = document.createElement("h3");
+        titulo.textContent = "Selecciona estado";
+
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", "Estado de configuracion automatica");
+
+        [
+            { label: "Activa", value: "1" },
+            { label: "Inactiva", value: "0" },
+        ].forEach((opcion) => {
+            const option = document.createElement("option");
+            option.value = opcion.value;
+            option.textContent = opcion.label;
+            select.appendChild(option);
+        });
+
+        select.value = Number(configuracionActual[campo]) === 1 ? "1" : "0";
+
+        const acciones = document.createElement("div");
+        acciones.className = "modal-config-acciones";
+
+        const cancelar = document.createElement("button");
+        cancelar.type = "button";
+        cancelar.textContent = "Cancelar";
+
+        const guardar = document.createElement("button");
+        guardar.type = "button";
+        guardar.textContent = "Guardar";
+
+        const cerrar = (valor) => {
+            overlay.remove();
+            resolve(valor);
+        };
+
+        cancelar.addEventListener("click", () => cerrar(null));
+        guardar.addEventListener("click", () => cerrar(select.value));
+        overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) {
+                cerrar(null);
+            }
+        });
+
+        acciones.append(cancelar, guardar);
+        panel.append(titulo, select, acciones);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+        select.focus();
+    });
 }
 
 async function cargarTablaLecturas() {
@@ -326,6 +515,7 @@ async function cargarTodo() {
         cargarEstadoApi(),
         cargarUltimaLectura(),
         cargarEstadoActuadores(),
+        cargarComandosPendientes(),
         cargarConfiguracion(),
         cargarTablaLecturas(),
         cargarTablaAccesos(),
@@ -340,7 +530,18 @@ async function cargarTodo() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    $("btn-actualizar").addEventListener("click", cargarTodo);
+    document.querySelectorAll(".control-actuador").forEach((card) => {
+        card.addEventListener("click", () => crearComandoDesdeCard(card.dataset.actuador));
+        card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                crearComandoDesdeCard(card.dataset.actuador);
+            }
+        });
+    });
+    document.querySelectorAll(".editable-card").forEach((card) => {
+        card.addEventListener("click", () => editarConfiguracion(card.dataset.campo));
+    });
     cargarTodo();
     window.setInterval(cargarTodo, INTERVALO_ACTUALIZACION_MS);
 });

@@ -11,10 +11,9 @@
         <div>
             <p class="eyebrow">Panel de monitoreo</p>
             <h1>Invernadero Inteligente IoT</h1>
-            <p class="descripcion">Vista de solo lectura conectada a la API REST PHP.</p>
+            <p class="descripcion">Monitoreo y control conectados a la API REST PHP.</p>
         </div>
         <div class="acciones">
-            <button id="btn-actualizar" type="button">Actualizar datos</button>
             <p class="ultima-actualizacion">Ultima actualizacion: <span id="ultima-actualizacion">Sin datos</span></p>
         </div>
     </header>
@@ -43,36 +42,36 @@
             <div class="titulo-seccion">
                 <h2>Ultima lectura de sensores</h2>
             </div>
-            <div class="grid-tarjetas">
-                <article class="tarjeta metrica">
+            <div class="grid-tarjetas grid-sensores">
+                <article class="tarjeta metrica sensor-card visual-card">
+                    <span class="icono-tarjeta" aria-hidden="true">&#127777;</span>
                     <span>Temperatura</span>
                     <strong id="lectura-temperatura">Sin datos</strong>
                     <small>&deg;C</small>
                 </article>
-                <article class="tarjeta metrica">
+                <article class="tarjeta metrica sensor-card visual-card">
+                    <span class="icono-tarjeta" aria-hidden="true">&#128167;</span>
                     <span>Humedad ambiental</span>
                     <strong id="lectura-humedad-ambiente">Sin datos</strong>
                     <small>%</small>
                 </article>
-                <article class="tarjeta metrica">
+                <article class="tarjeta metrica sensor-card visual-card">
+                    <span class="icono-tarjeta" aria-hidden="true">&#127793;</span>
                     <span>Humedad del suelo</span>
                     <strong id="lectura-humedad-suelo">Sin datos</strong>
                     <small>%</small>
                 </article>
-                <article class="tarjeta metrica">
+                <article class="tarjeta metrica sensor-card visual-card">
+                    <span class="icono-tarjeta" aria-hidden="true">#</span>
                     <span>Humedad suelo raw</span>
                     <strong id="lectura-humedad-raw">Sin datos</strong>
                     <small>ADC</small>
                 </article>
-                <article class="tarjeta metrica">
+                <article class="tarjeta metrica sensor-card visual-card">
+                    <span class="icono-tarjeta" aria-hidden="true">&#9728;</span>
                     <span>Intensidad de luz</span>
                     <strong id="lectura-luz">Sin datos</strong>
                     <small>lux</small>
-                </article>
-                <article class="tarjeta metrica">
-                    <span>Fecha de lectura</span>
-                    <strong id="lectura-fecha">Sin datos</strong>
-                    <small>registro</small>
                 </article>
             </div>
         </section>
@@ -81,36 +80,38 @@
             <div class="titulo-seccion">
                 <h2>Ultimo estado de actuadores</h2>
             </div>
-            <div class="grid-tarjetas">
-                <article class="tarjeta">
+            <div class="grid-tarjetas grid-actuadores">
+                <article class="tarjeta actuator-card visual-card control-actuador" data-actuador="ventilador" role="button" tabindex="0">
+                    <span class="icono-tarjeta" aria-hidden="true">V</span>
                     <span>Ventilador</span>
                     <strong id="act-ventilador" class="etiqueta estado-neutro">Sin datos</strong>
+                    <small id="accion-ventilador">Esperando estado</small>
                 </article>
-                <article class="tarjeta">
-                    <span>Bomba</span>
+                <article class="tarjeta actuator-card visual-card control-actuador" data-actuador="bomba" role="button" tabindex="0">
+                    <span class="icono-tarjeta" aria-hidden="true">&#128167;</span>
+                    <span>Bomba de agua</span>
                     <strong id="act-bomba" class="etiqueta estado-neutro">Sin datos</strong>
+                    <small id="accion-bomba">Esperando estado</small>
                 </article>
-                <article class="tarjeta">
+                <article class="tarjeta actuator-card visual-card control-actuador" data-actuador="lampara" role="button" tabindex="0">
+                    <span class="icono-tarjeta" aria-hidden="true">&#128161;</span>
                     <span>Lampara</span>
                     <strong id="act-lampara" class="etiqueta estado-neutro">Sin datos</strong>
+                    <small id="accion-lampara">Esperando estado</small>
                 </article>
-                <article class="tarjeta">
-                    <span>Servo/acceso</span>
+                <article class="tarjeta actuator-card visual-card">
+                    <span class="icono-tarjeta" aria-hidden="true">&#128274;</span>
+                    <span>Servo acceso</span>
                     <strong id="act-servo" class="etiqueta estado-neutro">Sin datos</strong>
                 </article>
-                <article class="tarjeta">
-                    <span>Modo de control</span>
-                    <strong id="act-modo">Sin datos</strong>
-                </article>
-                <article class="tarjeta">
-                    <span>Origen</span>
-                    <strong id="act-origen">Sin datos</strong>
-                </article>
-                <article class="tarjeta">
-                    <span>Fecha</span>
-                    <strong id="act-fecha">Sin datos</strong>
-                </article>
             </div>
+        </section>
+
+        <section class="seccion">
+            <div class="titulo-seccion">
+                <h2>Comandos pendientes</h2>
+            </div>
+            <div id="comandos-pendientes" class="tarjeta tarjeta-estado">Sin comandos pendientes</div>
         </section>
 
         <section class="seccion">
@@ -118,14 +119,13 @@
                 <h2>Configuracion de automatizacion</h2>
             </div>
             <div class="grid-tarjetas">
-                <article class="tarjeta"><span>Temperatura maxima</span><strong id="cfg-temp-max">Sin datos</strong></article>
-                <article class="tarjeta"><span>Humedad minima de suelo</span><strong id="cfg-hum-suelo-min">Sin datos</strong></article>
-                <article class="tarjeta"><span>Luz minima</span><strong id="cfg-luz-min">Sin datos</strong></article>
-                <article class="tarjeta"><span>Ventilacion automatica</span><strong id="cfg-ventilacion" class="etiqueta estado-neutro">Sin datos</strong></article>
-                <article class="tarjeta"><span>Riego automatico</span><strong id="cfg-riego" class="etiqueta estado-neutro">Sin datos</strong></article>
-                <article class="tarjeta"><span>Iluminacion automatica</span><strong id="cfg-iluminacion" class="etiqueta estado-neutro">Sin datos</strong></article>
-                <article class="tarjeta"><span>Duracion de riego</span><strong id="cfg-duracion-riego">Sin datos</strong></article>
-                <article class="tarjeta"><span>Intervalo de lectura</span><strong id="cfg-intervalo">Sin datos</strong></article>
+                <article class="tarjeta config-card editable-card" data-campo="temperatura_max_c"><span>Temperatura maxima</span><strong id="cfg-temp-max">Sin datos</strong></article>
+                <article class="tarjeta config-card editable-card" data-campo="humedad_suelo_min_pct"><span>Humedad minima de suelo</span><strong id="cfg-hum-suelo-min">Sin datos</strong></article>
+                <article class="tarjeta config-card editable-card" data-campo="luz_min_lux"><span>Luz minima</span><strong id="cfg-luz-min">Sin datos</strong></article>
+                <article class="tarjeta config-card editable-card" data-campo="ventilacion_automatica"><span>Ventilacion automatica</span><strong id="cfg-ventilacion" class="etiqueta estado-neutro">Sin datos</strong></article>
+                <article class="tarjeta config-card editable-card" data-campo="riego_automatico"><span>Riego automatico</span><strong id="cfg-riego" class="etiqueta estado-neutro">Sin datos</strong></article>
+                <article class="tarjeta config-card editable-card" data-campo="iluminacion_automatica"><span>Iluminacion automatica</span><strong id="cfg-iluminacion" class="etiqueta estado-neutro">Sin datos</strong></article>
+                <article class="tarjeta config-card editable-card" data-campo="duracion_riego_seg"><span>Duracion de riego</span><strong id="cfg-duracion-riego">Sin datos</strong></article>
             </div>
         </section>
 
@@ -152,7 +152,7 @@
 
         <section class="seccion">
             <div class="titulo-seccion">
-                <h2>Accesos RFID</h2>
+                <h2>Accesos RFID recientes</h2>
             </div>
             <div class="tabla-contenedor">
                 <table>
@@ -195,7 +195,6 @@
         <section class="seccion">
             <div class="titulo-seccion">
                 <h2>Comandos recientes</h2>
-                <p>Tabla de monitoreo. El panel web no crea comandos.</p>
             </div>
             <div class="tabla-contenedor">
                 <table>

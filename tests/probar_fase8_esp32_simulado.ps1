@@ -275,8 +275,40 @@ Invoke-Check "Endpoints no muestran datos operativos previos" {
     }
 }
 
+Invoke-Check "Simulador soporta modo continuo" {
+    $simulador = Get-Content -Raw "tests/simular_esp32.ps1"
+
+    if (-not $simulador.Contains("ModoContinuo")) {
+        throw "simular_esp32.ps1 no contiene parametro ModoContinuo."
+    }
+
+    if (-not $simulador.Contains("Start-ModoContinuo")) {
+        throw "simular_esp32.ps1 no contiene flujo de modo continuo."
+    }
+
+    if (-not $simulador.Contains("/comandos.php?estado=pendiente&limite=50")) {
+        throw "simular_esp32.ps1 no consulta comandos pendientes con limite 50."
+    }
+
+    if (-not $simulador.Contains("Start-Sleep -Seconds 2")) {
+        throw "simular_esp32.ps1 no espera 2 segundos entre ciclos."
+    }
+
+    if (-not $simulador.Contains("Send-LecturaSensoresSimulada")) {
+        throw "simular_esp32.ps1 no envia lecturas simuladas en modo continuo."
+    }
+
+    if (-not $simulador.Contains("variacion simulada")) {
+        throw "simular_esp32.ps1 no deja claro que las lecturas varian entre ciclos."
+    }
+
+    if (-not $simulador.Contains("No se crea comando nuevo porque no se uso -CrearComandoPrueba")) {
+        throw "simular_esp32.ps1 no deja claro que no crea comandos sin -CrearComandoPrueba."
+    }
+}
+
 Invoke-Check "Simulador ESP32 ejecutado" {
-    Invoke-NativeCommand -FilePath "powershell" -Arguments @("-ExecutionPolicy", "Bypass", "-File", ".\tests\simular_esp32.ps1") | Out-Null
+    Invoke-NativeCommand -FilePath "powershell" -Arguments @("-ExecutionPolicy", "Bypass", "-File", ".\tests\simular_esp32.ps1", "-CrearComandoPrueba") | Out-Null
 }
 
 Invoke-Check "Despues del simulador existen lecturas" {
@@ -337,6 +369,15 @@ Invoke-Check "No existen comandos para servo_acceso" {
 
     if ($comandosServo.Count -gt 0) {
         throw "Se encontraron comandos para servo_acceso."
+    }
+}
+
+Invoke-Check "No quedan comandos pendientes procesables" {
+    $pendientes = Invoke-ApiJson -Method "GET" -Path "/api/comandos.php?estado=pendiente&limite=50"
+    $pendientesProcesables = @($pendientes.comandos | Where-Object { $_.actuador -in @("bomba", "ventilador", "lampara") })
+
+    if ($pendientesProcesables.Count -gt 0) {
+        throw "Quedan comandos pendientes procesables: $($pendientesProcesables.Count)"
     }
 }
 

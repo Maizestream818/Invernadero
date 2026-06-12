@@ -52,6 +52,14 @@ public class ApiClient {
     }
 
     public JSONObject postJson(String endpoint, JSONObject body) throws IOException, JSONException {
+        return sendJson("POST", endpoint, body);
+    }
+
+    public JSONObject putJson(String endpoint, JSONObject body) throws IOException, JSONException {
+        return sendJson("PUT", endpoint, body);
+    }
+
+    private JSONObject sendJson(String method, String endpoint, JSONObject body) throws IOException, JSONException {
         HttpURLConnection connection = null;
 
         try {
@@ -59,7 +67,7 @@ public class ApiClient {
             byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
 
             connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
+            connection.setRequestMethod(method);
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setRequestProperty("Accept", "application/json");

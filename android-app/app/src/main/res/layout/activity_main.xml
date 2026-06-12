@@ -43,7 +43,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Monitoreo Android conectado a la API REST PHP."
+                android:text="Monitoreo en tiempo real con actualizacion automatica cada 2 segundos."
                 android:textColor="#DDEFE6"
                 android:textSize="14sp" />
         </LinearLayout>
@@ -75,28 +75,27 @@
                 android:textColor="@color/color_text"
                 android:textColorHint="@color/color_muted" />
 
-            <Button
-                android:id="@+id/btnGuardarUrl"
-                style="@style/ButtonSecondary"
-                android:layout_marginTop="12dp"
-                android:text="Guardar URL" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="La URL se guarda automaticamente al editarla o probar conexion."
+                android:textColor="@color/color_muted"
+                android:textSize="13sp" />
 
             <Button
                 android:id="@+id/btnProbarConexion"
                 style="@style/ButtonSecondary"
                 android:text="Probar conexion" />
-
-            <Button
-                android:id="@+id/btnActualizarDatos"
-                style="@style/ButtonPrimary"
-                android:text="Actualizar datos" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/tvEstadoApi"
             style="@style/StatusBlock"
             android:layout_marginTop="14dp"
-            android:text="API no verificada" />
+            android:gravity="center_vertical"
+            android:minHeight="58dp"
+            android:text="API desconectada" />
 
         <TextView
             android:id="@+id/tvUltimaActualizacion"
@@ -111,103 +110,155 @@
             android:text="Sensores" />
 
         <TextView
-            android:id="@+id/tvSensores"
-            style="@style/TextBlock"
-            android:text="Sin datos" />
+            android:id="@+id/txtTarjetasSensores"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Tarjetas de sensores en dos columnas"
+            android:textColor="@color/color_muted"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_sensor_temperatura" />
+                <include layout="@layout/item_sensor_humedad_ambiente" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_sensor_humedad_suelo" />
+                <include layout="@layout/item_sensor_humedad_raw" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_sensor_luz" />
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="5dp"
+                    android:layout_weight="1" />
+            </LinearLayout>
+        </LinearLayout>
 
         <TextView
             style="@style/SectionTitle"
             android:text="Actuadores" />
 
         <TextView
-            android:id="@+id/tvActuadores"
-            style="@style/TextBlock"
-            android:text="Sin datos" />
+            android:id="@+id/txtTarjetasActuadores"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Tarjetas de actuadores con control integrado"
+            android:textColor="@color/color_muted"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:id="@+id/gridActuadoresAndroid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_actuador_ventilador" />
+                <include layout="@layout/item_actuador_bomba" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_actuador_lampara" />
+                <include layout="@layout/item_actuador_servo" />
+            </LinearLayout>
+        </LinearLayout>
 
         <TextView
             style="@style/SectionTitle"
-            android:text="Control remoto" />
+            android:text="Comandos pendientes" />
 
-        <LinearLayout
-            style="@style/CardContainer"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Los comandos se guardan como pendientes para que el ESP32 los ejecute."
-                android:textColor="@color/color_muted"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/tvControlMensaje"
-                style="@style/StatusBlock"
-                android:layout_marginTop="12dp"
-                android:text="Sin comandos enviados desde la app" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="Ventilador"
-                android:textColor="@color/color_text"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/btnVentiladorEncender"
-                style="@style/ButtonPrimary"
-                android:text="Encender ventilador" />
-
-            <Button
-                android:id="@+id/btnVentiladorApagar"
-                style="@style/ButtonSecondary"
-                android:text="Apagar ventilador" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="Bomba"
-                android:textColor="@color/color_text"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/btnBombaEncender"
-                style="@style/ButtonPrimary"
-                android:text="Encender bomba" />
-
-            <Button
-                android:id="@+id/btnBombaApagar"
-                style="@style/ButtonSecondary"
-                android:text="Apagar bomba" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="Lampara"
-                android:textColor="@color/color_text"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/btnLamparaEncender"
-                style="@style/ButtonPrimary"
-                android:text="Encender lampara" />
-
-            <Button
-                android:id="@+id/btnLamparaApagar"
-                style="@style/ButtonSecondary"
-                android:text="Apagar lampara" />
-        </LinearLayout>
+        <TextView
+            android:id="@+id/tvComandosPendientes"
+            style="@style/StatusBlock"
+            android:text="Sin comandos pendientes" />
 
         <TextView
             style="@style/SectionTitle"
             android:text="Configuracion de automatizacion" />
 
-        <TextView
-            android:id="@+id/tvConfiguracion"
-            style="@style/TextBlock"
-            android:text="Sin datos" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_config_temp_max" />
+                <include layout="@layout/item_config_humedad_min" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_config_luz_min" />
+                <include layout="@layout/item_config_ventilacion" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_config_riego" />
+                <include layout="@layout/item_config_iluminacion" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <include layout="@layout/item_config_duracion_riego" />
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="5dp"
+                    android:layout_weight="1" />
+            </LinearLayout>
+        </LinearLayout>
 
         <TextView
             style="@style/SectionTitle"
